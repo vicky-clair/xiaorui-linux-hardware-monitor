@@ -3,6 +3,8 @@ resolver = "3"
 members = [
     "packages/protocol/rust",
     "agents/linux-agent/crates/agent-core",
+    "agents/linux-agent/crates/agent-collectors",
+    "agents/linux-agent/crates/agent-ipc",
     "agents/linux-agent/crates/agent-bin",
 ]
 
@@ -10,3 +12,17 @@ members = [
 edition = "2024"
 rust-version = "1.90"
 license = "MIT"
+
+[workspace.dependencies]
+lhm-protocol = { path = "packages/protocol/rust" }
+agent-core = { path = "agents/linux-agent/crates/agent-core" }
+agent-collectors = { path = "agents/linux-agent/crates/agent-collectors" }
+agent-ipc = { path = "agents/linux-agent/crates/agent-ipc" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "io-util", "sync", "signal", "process"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+uuid = { version = "1", features = ["v4"] }
+libloading = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }

@@ -1,3 +1,11 @@
+pub mod collector;
+pub mod command;
+pub mod coverage;
+pub mod host;
+pub mod identity;
+pub mod scheduler;
+pub mod sysfs;
+
 use lhm_protocol::{PROTOCOL_NAME, SCHEMA_VERSION};
 
 /// Metadata describing the agent build and supported protocol baseline.
@@ -14,6 +22,10 @@ pub fn agent_info() -> AgentInfo {
         protocol: PROTOCOL_NAME,
         schema_version: SCHEMA_VERSION,
     }
+}
+
+pub fn utc_now_rfc3339() -> String {
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
 #[cfg(test)]
