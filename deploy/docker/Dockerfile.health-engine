@@ -3,26 +3,16 @@ FROM haskell:9.10.3-slim-bookworm@sha256:683f74f48dcc5a40081628d12ebe8f3bb379bf3
 
 WORKDIR /build
 
-# 1. Cache dependency build separately from source edits using BuildKit cache mounts
-COPY packages/protocol/haskell/lhm-protocol.cabal ./packages/protocol/haskell/lhm-protocol.cabal
-COPY core/health-engine/cabal.project core/health-engine/cabal.project.freeze core/health-engine/lhm-health-engine.cabal ./core/health-engine/
-
-WORKDIR /build/core/health-engine
-RUN --mount=type=cache,target=/root/.cache/cabal \
-    --mount=type=cache,target=/root/.local/state/cabal \
-    sed -i 's/\r$//' cabal.project.freeze || true \
-    && cabal update \
-    && cabal build --only-dependencies exe:lhm-health-engine -j2 --ghc-options="+RTS -M1000m -RTS"
-
-# 2. Copy Haskell sources and compile project modules + executable (fast incremental rebuild)
-WORKDIR /build
 COPY packages/protocol/haskell ./packages/protocol/haskell
 COPY core/health-engine ./core/health-engine
 
 WORKDIR /build/core/health-engine
+
+# BuildKit cache mounts preserve Cabal store across source edits for fast incremental rebuilds
 RUN --mount=type=cache,target=/root/.cache/cabal \
     --mount=type=cache,target=/root/.local/state/cabal \
     sed -i 's/\r$//' cabal.project.freeze || true \
+    && cabal update \
     && cabal build exe:lhm-health-engine -j2 --ghc-options="+RTS -M1000m -RTS" \
     && mkdir -p /out \
     && cp "$(cabal list-bin exe:lhm-health-engine)" /out/lhm-health-engine \
