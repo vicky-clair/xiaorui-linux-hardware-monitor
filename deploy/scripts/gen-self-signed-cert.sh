@@ -31,9 +31,10 @@ openssl req -x509 -nodes -newkey rsa:2048 \
   -subj "/CN=linux-hardware-monitor.local" \
   -addext "subjectAltName=IP:${LAN_IP},IP:127.0.0.1,DNS:localhost,DNS:linux-hardware-monitor.local"
 
-chmod 0600 "${KEY_FILE}"
+chmod 0750 "${OUT_DIR}"
+chmod 0640 "${KEY_FILE}"
 chmod 0644 "${CRT_FILE}"
-echo "Generated self-signed LAN certificate:"
+echo "Generated self-signed LAN certificate (key mode 0640 for nginx-unprivileged group_add):"
 echo "  Key:  ${KEY_FILE}"
 echo "  Cert: ${CRT_FILE}"
 echo "Enable optional HTTPS mode with:"

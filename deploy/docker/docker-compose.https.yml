@@ -10,6 +10,8 @@ services:
       LHM_COOKIE_SECURE: "true"
 
   web:
+    group_add:
+      - "${LHM_GID:-1000}"
     environment:
       LHM_HTTPS_PORT: "${LHM_HTTPS_PORT:-18443}"
     ports:

@@ -92,10 +92,21 @@ bash deploy/scripts/restore-sqlite.sh ./backups/lhm-<UTC>.sqlite /path/to/lhm.sq
 docker compose --env-file deploy/docker/.env -f deploy/docker/docker-compose.yml start api
 ```
 
-## 5. 长期运行验收建议
+## 5. 阶段 5 L3 实测数据与长期运行建议
 
-阶段 5 的 7 天连续运行稳定性测试（目标见 [workflow.md](../development/workflow.md) §6）需在实际部署后持续观察：
-- Agent 内存（目标 `< 150 MB`）与 CPU（目标 `< 2%`）
-- 容器 `docker stats` 内存趋势（无持续增长泄漏）
-- SQLite WAL 体积、小时/分钟聚合与自动保留清理日志
-- 模拟 Agent 重启与容器重建后的自动重连与数据无丢失
+**2026-11-20 L3 实体机实测快照（Debian 13.6 / Intel Celeron N5095A，隔离栈 `COMPOSE_PROJECT_NAME=lhm-test`，端口 `18080`）**：
+- 原生 `lhm-agent`（release，3s 周期）：`RSS 4.8 MiB`（目标 `< 150 MB`），`CPU 0.2%`（目标 `< 2%`）；`SIGTERM` 重启后自动重连并恢复上报。
+- 非 root 三容器稳态内存占用：
+  - `health-engine`（`uid=10001`）：`2.57 MiB / 256 MiB`，`CPU 0.00%`
+  - `api`（`uid=1000`）：`41.12 MiB / 512 MiB`，`CPU 0.31%`
+  - `web`（`uid=101`）：`4.67 MiB / 128 MiB`，`CPU 0.00%`
+- 全链路实机验证：8 台真实设备、29 个传感器经 Unix Socket 入库；Haskell 引擎容器分析全部 8 台设备（`ok=true, degraded=false`）。
+- 容器重建持久性：`api` 容器 `--force-recreate` 重建后设备、分析结果与同一会话 Cookie 全部保留。
+- SQLite 在线备份与恢复演练：`VACUUM INTO` 在线快照 + SHA-256 校验 + 恢复至独立文件通过 `PRAGMA integrity_check == ok`（23 张表、全部数据完整）。
+- **尚未验证项**：7 天连续长期运行稳定性测试（目标见 [workflow.md](../development/workflow.md) §6）与宿主机 `systemd` 安装（需项目所有者手动 `sudo` 授权执行）。
+
+长期运行验收建议：
+- 持续观察 Agent 内存（目标 `< 150 MB`）与 CPU（目标 `< 2%`）
+- 定期观察 `docker stats` 内存趋势（无持续增长泄漏）
+- 定期检查 SQLite WAL 体积、小时/分钟聚合与自动保留清理日志
+- 定期执行备份恢复演练
