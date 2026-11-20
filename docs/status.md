@@ -26,6 +26,7 @@
 
 ## 已知风险 / 待办
 
-- L3 实体机（`192.168.9.165:18080`）已常驻运行 `lhm` 三容器与非 root 低优先级 `lhm-agent`（零 `sudo`、隔离在 `~/linux-hardware-monitor` 内），等待项目所有者通过浏览器初始化管理员账户并继续长期运行观察（7 天长期稳定性需持续运行观察，当前已验证启动后 35 秒稳态运行）。
+- L3 实体机（`192.168.9.165:18080`）现已通过非 root `systemd` 托管 `lhm-agent.service`（方案 A，已开机自启，`systemd-analyze security` 分值 `4.7 OK`，cgroup 内存 `1.2 MiB`）与 Docker Compose 三容器（`restart: unless-stopped`）常驻运行，全部设备含 `sda`/`sdb` SMART 原始属性与 Intel RAPL CPU 功耗均已实测入库。
+- 7 天连续长期运行稳定性测试需在当前常驻状态下持续观察。
 - Tauri 2 桌面客户端（`apps/desktop/`）已完成脚手架配置与服务端 Origin 兼容，实际桌面安装包构建需在具备 WebView2/GTK 桌面工具链的环境执行并实测。
 - 多主机传输与 IPMI/Redfish 带外采集保留在 ADR-0010（`proposed`），按需经所有者批准后再实施，当前保持零额外攻击面与零额外性能开销。

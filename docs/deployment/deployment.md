@@ -102,7 +102,11 @@ docker compose --env-file deploy/docker/.env -f deploy/docker/docker-compose.yml
   - `lhm-web-1`（`uid=101`，上限 `0.25 CPU / 128 MiB`）：`4.64 MiB`、`CPU 0.00%`
 - 全系统 4 进程总计占用约 **`0.03% CPU` / `48.7 MiB RAM`**。
 - 启动后安全复验：未登录访问 `/api/v1/{devices,config,export/report,notifications,alerts,analysis}` 均返回 `HTTP 401`；非法 Origin 的 WebSocket 连接返回 `HTTP 403`；Webhook SSRF 元数据地址被拦截返回 `HTTP 400`。
-- **尚未验证项**：7 天连续长期运行稳定性测试（目标见 [workflow.md](../development/workflow.md) §6）与宿主机 `systemd` 安装（需项目所有者手动 `sudo` 授权执行）。
+- **非 root `systemd` 最小权限实测（方案 A，2026-11-20 经项目所有者授权安装）**：
+  - 单元 `/etc/systemd/system/lhm-agent.service` 以专用非 root 用户 `lhm-agent (uid=994)` 托管并开启开机自启，IPC 目录 `/run/linux-hardware-monitor`（`0770`）实现 `ProtectHome=yes` 完全生效。
+  - `systemd-analyze security lhm-agent.service` 实测暴露分值：**`4.7 OK`**；cgroup 内存实测 **`1.2 MiB`（峰值 `2.8 MiB` / 上限 `150 MiB`）**。
+  - 成功解锁全部 3 项受限硬件遥测（无 `User=root`）：`/dev/sda`（`SCY SNM4T1G25600`，`54 °C`、通电 `18,135 h`、SMART 自检通过）、`/dev/sdb`（`38 °C`、通电 `14,097 h`、SMART 自检通过，双盘合计入库 70 条 SMART 原始属性）、Intel RAPL CPU 封装功耗（`5.09 W`）。
+- **尚未验证项**：7 天连续长期运行稳定性测试（目标见 [workflow.md](../development/workflow.md) §6）。
 
 长期运行验收建议：
 - 持续观察 Agent 内存（目标 `< 150 MB`）与 CPU（目标 `< 2%`）
