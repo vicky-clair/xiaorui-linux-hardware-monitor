@@ -9,7 +9,7 @@ export function OverviewView({ data }: { data: OverviewResponse }) {
   return (
     <>
       <div className="banner banner-info">
-        阶段 3 控制台仅展示实时与历史硬件遥测，不在前端推断健康状态；健康评分与告警中心将在阶段 4 由 Haskell 引擎提供。
+        前端仅展示 API 返回的硬件遥测与 Haskell 引擎分析结果，绝不在前端推断健康状态或补零。
       </div>
 
       <div className="card-grid">

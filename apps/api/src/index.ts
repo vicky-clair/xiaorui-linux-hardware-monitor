@@ -33,7 +33,7 @@ if (process.platform !== "win32") {
   );
 }
 
-// Background aggregation & routine retention timer (every 60s)
+// Background aggregation & health analysis timer (every 60s)
 const aggTimer = setInterval(() => {
   const now = Date.now();
   const from1m = new Date(now - 5 * 60_000).toISOString();
@@ -52,6 +52,7 @@ const aggTimer = setInterval(() => {
       }),
     );
   }
+  void runtime.healthService.runCycle();
 }, 60_000);
 
 runtime.app.listen({

@@ -4,6 +4,8 @@ import { api, type UserInfo } from "./lib/api.ts";
 import { formatLocalTime, formatReadingValue } from "./lib/format.ts";
 import { useRealtimeStream } from "./lib/ws.ts";
 import { LoadingState, WsStatusBanner } from "./components/States.tsx";
+import { AlertsPage } from "./pages/AlertsPage.tsx";
+import { AnalysisPage } from "./pages/AnalysisPage.tsx";
 import { ConfigPage } from "./pages/ConfigPage.tsx";
 import { CoveragePage } from "./pages/CoveragePage.tsx";
 import { DevicesPage } from "./pages/DevicesPage.tsx";
@@ -26,6 +28,8 @@ export type PageKey =
   | "nvme"
   | "temp-history"
   | "fans-voltage"
+  | "alerts"
+  | "analysis"
   | "devices"
   | "coverage"
   | "diagnostics"
@@ -41,6 +45,8 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string }> = [
   { key: "nvme", label: "NVMe 监控" },
   { key: "temp-history", label: "温度历史" },
   { key: "fans-voltage", label: "风扇与电压" },
+  { key: "alerts", label: "告警中心" },
+  { key: "analysis", label: "健康评分与分析" },
   { key: "devices", label: "硬件设备列表" },
   { key: "coverage", label: "传感器覆盖率" },
   { key: "diagnostics", label: "采集器诊断" },
@@ -168,6 +174,8 @@ export function App() {
               liveReadings={stream.latestBySensor}
             />
           )}
+          {page === "alerts" && <AlertsPage user={user} />}
+          {page === "analysis" && <AnalysisPage user={user} />}
           {page === "devices" && <DevicesPage />}
           {page === "coverage" && <CoveragePage />}
           {page === "diagnostics" && <DiagnosticsPage />}

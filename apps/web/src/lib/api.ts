@@ -216,6 +216,49 @@ export interface OverviewResponse {
   };
 }
 
+export interface AnalysisRow {
+  id: number;
+  host_id: string;
+  device_id: string;
+  severity: "normal" | "warning" | "critical" | "unknown";
+  score: number | null;
+  engine_version: string;
+  rule_version: string;
+  threshold_source: string;
+  trend: string;
+  anomalies: Array<{ code: string; reason: string }>;
+  correlations: Array<{ code: string; summary: string }>;
+  factors: Array<{ metric: string; delta: number; reason: string }>;
+  analyzed_at: string;
+}
+
+export interface AlertRow {
+  alert_id: string;
+  host_id: string;
+  device_id: string;
+  rule_id: string;
+  severity: "normal" | "warning" | "critical" | "unknown";
+  status: string;
+  summary: string;
+  triggered_at: string;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+  resolved_at: string | null;
+}
+
+export interface AlertRuleRow {
+  rule_id: string;
+  metric: string;
+  device_type: DeviceType;
+  device_id: string | null;
+  operator: "gt" | "gte" | "lt" | "lte";
+  threshold: number;
+  unit: Unit;
+  duration_seconds: number;
+  severity: "normal" | "warning" | "critical" | "unknown";
+  enabled: boolean;
+}
+
 export interface ConfigResponse {
   settings: Record<string, unknown>;
   defaults: {
@@ -310,4 +353,27 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(settings),
     }),
+  analysis: () => request<{ results: AnalysisRow[] }>("/api/v1/analysis"),
+  runAnalysis: () =>
+    request<{ ok: boolean; degraded: boolean; analyzed_devices: number }>(
+      "/api/v1/analysis/run",
+      { method: "POST" },
+    ),
+  alerts: () => request<{ alerts: AlertRow[] }>("/api/v1/alerts"),
+  ackAlert: (alertId: string) =>
+    request<{ alert_id: string; acknowledged_at: string; acknowledged_by: string }>(
+      `/api/v1/alerts/${encodeURIComponent(alertId)}/ack`,
+      { method: "POST" },
+    ),
+  alertRules: () => request<{ rules: AlertRuleRow[] }>("/api/v1/alert-rules"),
+  createAlertRule: (rule: Omit<AlertRuleRow, "enabled"> & { enabled?: boolean }) =>
+    request<{ rule: AlertRuleRow; warning: string | null }>("/api/v1/alert-rules", {
+      method: "POST",
+      body: JSON.stringify(rule),
+    }),
+  deleteAlertRule: (ruleId: string) =>
+    request<{ deleted: boolean }>(
+      `/api/v1/alert-rules/${encodeURIComponent(ruleId)}`,
+      { method: "DELETE" },
+    ),
 };

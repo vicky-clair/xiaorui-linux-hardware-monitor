@@ -26,6 +26,23 @@ module Lhm.Protocol
   , SmartReport (..)
   , IpcMessageType (..)
   , IpcMessage (..)
+  , RuleOperator (..)
+  , ThresholdSource (..)
+  , TrendDirection (..)
+  , AlertStateName (..)
+  , AlertTransitionKind (..)
+  , AlertRuleSpec (..)
+  , HardwareLimit (..)
+  , AlertStateSnapshot (..)
+  , AnalyzeDeviceRef (..)
+  , HistoryPoint (..)
+  , AnalyzeRequest (..)
+  , AnomalyRecord (..)
+  , CorrelationRecord (..)
+  , ScoreFactorRecord (..)
+  , AnalysisResultRecord (..)
+  , AlertTransitionRecord (..)
+  , AnalyzeResponse (..)
   ) where
 
 import Data.Aeson
@@ -821,3 +838,489 @@ instance FromJSON IpcMessage where
           <*> o .: "sequence"
           <*> o .: "sent_at"
           <*> o .: "payload"
+
+data RuleOperator
+  = OpGt
+  | OpGte
+  | OpLt
+  | OpLte
+  deriving (Eq, Show)
+
+instance ToJSON RuleOperator where
+  toJSON OpGt = "gt"
+  toJSON OpGte = "gte"
+  toJSON OpLt = "lt"
+  toJSON OpLte = "lte"
+
+instance FromJSON RuleOperator where
+  parseJSON = withText "RuleOperator" $ \t -> case t of
+    "gt" -> pure OpGt
+    "gte" -> pure OpGte
+    "lt" -> pure OpLt
+    "lte" -> pure OpLte
+    _ -> fail $ "Invalid RuleOperator: " <> T.unpack t
+
+data ThresholdSource
+  = ThHardwareLimit
+  | ThUserDeviceOverride
+  | ThGenericDefault
+  | ThUnavailable
+  deriving (Eq, Show)
+
+instance ToJSON ThresholdSource where
+  toJSON ThHardwareLimit = "hardware_limit"
+  toJSON ThUserDeviceOverride = "user_device_override"
+  toJSON ThGenericDefault = "generic_default"
+  toJSON ThUnavailable = "unavailable"
+
+instance FromJSON ThresholdSource where
+  parseJSON = withText "ThresholdSource" $ \t -> case t of
+    "hardware_limit" -> pure ThHardwareLimit
+    "user_device_override" -> pure ThUserDeviceOverride
+    "generic_default" -> pure ThGenericDefault
+    "unavailable" -> pure ThUnavailable
+    _ -> fail $ "Invalid ThresholdSource: " <> T.unpack t
+
+data TrendDirection
+  = TrendRising
+  | TrendStable
+  | TrendFalling
+  | TrendInsufficientData
+  deriving (Eq, Show)
+
+instance ToJSON TrendDirection where
+  toJSON TrendRising = "rising"
+  toJSON TrendStable = "stable"
+  toJSON TrendFalling = "falling"
+  toJSON TrendInsufficientData = "insufficient_data"
+
+instance FromJSON TrendDirection where
+  parseJSON = withText "TrendDirection" $ \t -> case t of
+    "rising" -> pure TrendRising
+    "stable" -> pure TrendStable
+    "falling" -> pure TrendFalling
+    "insufficient_data" -> pure TrendInsufficientData
+    _ -> fail $ "Invalid TrendDirection: " <> T.unpack t
+
+data AlertStateName
+  = AlertStateOk
+  | AlertStatePending
+  | AlertStateFiring
+  | AlertStateResolved
+  deriving (Eq, Show)
+
+instance ToJSON AlertStateName where
+  toJSON AlertStateOk = "ok"
+  toJSON AlertStatePending = "pending"
+  toJSON AlertStateFiring = "firing"
+  toJSON AlertStateResolved = "resolved"
+
+instance FromJSON AlertStateName where
+  parseJSON = withText "AlertStateName" $ \t -> case t of
+    "ok" -> pure AlertStateOk
+    "pending" -> pure AlertStatePending
+    "firing" -> pure AlertStateFiring
+    "resolved" -> pure AlertStateResolved
+    _ -> fail $ "Invalid AlertStateName: " <> T.unpack t
+
+data AlertTransitionKind
+  = TransitionNoop
+  | TransitionTrigger
+  | TransitionEscalate
+  | TransitionResolve
+  deriving (Eq, Show)
+
+instance ToJSON AlertTransitionKind where
+  toJSON TransitionNoop = "noop"
+  toJSON TransitionTrigger = "trigger"
+  toJSON TransitionEscalate = "escalate"
+  toJSON TransitionResolve = "resolve"
+
+instance FromJSON AlertTransitionKind where
+  parseJSON = withText "AlertTransitionKind" $ \t -> case t of
+    "noop" -> pure TransitionNoop
+    "trigger" -> pure TransitionTrigger
+    "escalate" -> pure TransitionEscalate
+    "resolve" -> pure TransitionResolve
+    _ -> fail $ "Invalid AlertTransitionKind: " <> T.unpack t
+
+data AlertRuleSpec = AlertRuleSpec
+  { ruleSpecId :: Text
+  , ruleSpecMetric :: Text
+  , ruleSpecDeviceType :: DeviceType
+  , ruleSpecDeviceId :: Maybe Text
+  , ruleSpecOperator :: RuleOperator
+  , ruleSpecThreshold :: Double
+  , ruleSpecUnit :: Unit
+  , ruleSpecDurationSeconds :: Int
+  , ruleSpecSeverity :: Severity
+  , ruleSpecEnabled :: Bool
+  }
+  deriving (Eq, Show)
+
+instance ToJSON AlertRuleSpec where
+  toJSON r =
+    object
+      [ "rule_id" .= ruleSpecId r
+      , "metric" .= ruleSpecMetric r
+      , "device_type" .= ruleSpecDeviceType r
+      , "device_id" .= ruleSpecDeviceId r
+      , "operator" .= ruleSpecOperator r
+      , "threshold" .= ruleSpecThreshold r
+      , "unit" .= ruleSpecUnit r
+      , "duration_seconds" .= ruleSpecDurationSeconds r
+      , "severity" .= ruleSpecSeverity r
+      , "enabled" .= ruleSpecEnabled r
+      ]
+
+instance FromJSON AlertRuleSpec where
+  parseJSON = withObject "AlertRuleSpec" $ \o ->
+    AlertRuleSpec
+      <$> o .: "rule_id"
+      <*> o .: "metric"
+      <*> o .: "device_type"
+      <*> o .:? "device_id"
+      <*> o .: "operator"
+      <*> o .: "threshold"
+      <*> o .: "unit"
+      <*> o .: "duration_seconds"
+      <*> o .: "severity"
+      <*> o .: "enabled"
+
+data HardwareLimit = HardwareLimit
+  { hwLimitDeviceId :: Text
+  , hwLimitMetric :: Text
+  , hwLimitUnit :: Unit
+  , hwLimitMaxValue :: Maybe Double
+  , hwLimitCritValue :: Maybe Double
+  , hwLimitSource :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON HardwareLimit where
+  toJSON h =
+    object
+      [ "device_id" .= hwLimitDeviceId h
+      , "metric" .= hwLimitMetric h
+      , "unit" .= hwLimitUnit h
+      , "max_value" .= hwLimitMaxValue h
+      , "crit_value" .= hwLimitCritValue h
+      , "source" .= hwLimitSource h
+      ]
+
+instance FromJSON HardwareLimit where
+  parseJSON = withObject "HardwareLimit" $ \o ->
+    HardwareLimit
+      <$> o .: "device_id"
+      <*> o .: "metric"
+      <*> o .: "unit"
+      <*> o .:? "max_value"
+      <*> o .:? "crit_value"
+      <*> o .: "source"
+
+data AlertStateSnapshot = AlertStateSnapshot
+  { snapStateKey :: Text
+  , snapHostId :: Text
+  , snapDeviceId :: Text
+  , snapRuleId :: Text
+  , snapState :: AlertStateName
+  , snapPendingSince :: Maybe Text
+  , snapFiringSince :: Maybe Text
+  , snapLastEvaluatedAt :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON AlertStateSnapshot where
+  toJSON s =
+    object
+      [ "state_key" .= snapStateKey s
+      , "host_id" .= snapHostId s
+      , "device_id" .= snapDeviceId s
+      , "rule_id" .= snapRuleId s
+      , "state" .= snapState s
+      , "pending_since" .= snapPendingSince s
+      , "firing_since" .= snapFiringSince s
+      , "last_evaluated_at" .= snapLastEvaluatedAt s
+      ]
+
+instance FromJSON AlertStateSnapshot where
+  parseJSON = withObject "AlertStateSnapshot" $ \o ->
+    AlertStateSnapshot
+      <$> o .: "state_key"
+      <*> o .: "host_id"
+      <*> o .: "device_id"
+      <*> o .: "rule_id"
+      <*> o .: "state"
+      <*> o .:? "pending_since"
+      <*> o .:? "firing_since"
+      <*> o .: "last_evaluated_at"
+
+data AnalyzeDeviceRef = AnalyzeDeviceRef
+  { refDeviceId :: Text
+  , refDeviceType :: DeviceType
+  , refDeviceStatus :: DeviceStatus
+  }
+  deriving (Eq, Show)
+
+instance ToJSON AnalyzeDeviceRef where
+  toJSON d =
+    object
+      [ "device_id" .= refDeviceId d
+      , "device_type" .= refDeviceType d
+      , "device_status" .= refDeviceStatus d
+      ]
+
+instance FromJSON AnalyzeDeviceRef where
+  parseJSON = withObject "AnalyzeDeviceRef" $ \o ->
+    AnalyzeDeviceRef
+      <$> o .: "device_id"
+      <*> o .: "device_type"
+      <*> o .: "device_status"
+
+data HistoryPoint = HistoryPoint
+  { hpDeviceId :: Text
+  , hpSensorId :: Text
+  , hpMetric :: Text
+  , hpValue :: Maybe Double
+  , hpQuality :: ReadingQuality
+  , hpCollectedAt :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON HistoryPoint where
+  toJSON h =
+    object
+      [ "device_id" .= hpDeviceId h
+      , "sensor_id" .= hpSensorId h
+      , "metric" .= hpMetric h
+      , "value" .= hpValue h
+      , "quality" .= hpQuality h
+      , "collected_at" .= hpCollectedAt h
+      ]
+
+instance FromJSON HistoryPoint where
+  parseJSON = withObject "HistoryPoint" $ \o ->
+    HistoryPoint
+      <$> o .: "device_id"
+      <*> o .: "sensor_id"
+      <*> o .: "metric"
+      <*> o .: "value"
+      <*> o .: "quality"
+      <*> o .: "collected_at"
+
+data AnalyzeRequest = AnalyzeRequest
+  { reqSchemaVersion :: Text
+  , reqHostId :: Text
+  , reqEvaluatedAt :: Text
+  , reqRuleVersion :: Text
+  , reqDevices :: [AnalyzeDeviceRef]
+  , reqReadings :: [SensorReading]
+  , reqHistoryPoints :: [HistoryPoint]
+  , reqRules :: [AlertRuleSpec]
+  , reqHardwareLimits :: [HardwareLimit]
+  , reqPrevAlertStates :: [AlertStateSnapshot]
+  }
+  deriving (Eq, Show)
+
+instance ToJSON AnalyzeRequest where
+  toJSON r =
+    object
+      [ "schema_version" .= reqSchemaVersion r
+      , "host_id" .= reqHostId r
+      , "evaluated_at" .= reqEvaluatedAt r
+      , "rule_version" .= reqRuleVersion r
+      , "devices" .= reqDevices r
+      , "readings" .= reqReadings r
+      , "history_points" .= reqHistoryPoints r
+      , "rules" .= reqRules r
+      , "hardware_limits" .= reqHardwareLimits r
+      , "prev_alert_states" .= reqPrevAlertStates r
+      ]
+
+instance FromJSON AnalyzeRequest where
+  parseJSON = withObject "AnalyzeRequest" $ \o ->
+    AnalyzeRequest
+      <$> o .: "schema_version"
+      <*> o .: "host_id"
+      <*> o .: "evaluated_at"
+      <*> o .: "rule_version"
+      <*> o .: "devices"
+      <*> o .: "readings"
+      <*> o .: "history_points"
+      <*> o .: "rules"
+      <*> o .: "hardware_limits"
+      <*> o .: "prev_alert_states"
+
+data AnomalyRecord = AnomalyRecord
+  { anomalyRecCode :: Text
+  , anomalyRecReason :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON AnomalyRecord where
+  toJSON a = object ["code" .= anomalyRecCode a, "reason" .= anomalyRecReason a]
+
+instance FromJSON AnomalyRecord where
+  parseJSON = withObject "AnomalyRecord" $ \o ->
+    AnomalyRecord <$> o .: "code" <*> o .: "reason"
+
+data CorrelationRecord = CorrelationRecord
+  { corrRecCode :: Text
+  , corrRecSummary :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON CorrelationRecord where
+  toJSON c = object ["code" .= corrRecCode c, "summary" .= corrRecSummary c]
+
+instance FromJSON CorrelationRecord where
+  parseJSON = withObject "CorrelationRecord" $ \o ->
+    CorrelationRecord <$> o .: "code" <*> o .: "summary"
+
+data ScoreFactorRecord = ScoreFactorRecord
+  { factorRecMetric :: Text
+  , factorRecDelta :: Double
+  , factorRecReason :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON ScoreFactorRecord where
+  toJSON f =
+    object
+      [ "metric" .= factorRecMetric f
+      , "delta" .= factorRecDelta f
+      , "reason" .= factorRecReason f
+      ]
+
+instance FromJSON ScoreFactorRecord where
+  parseJSON = withObject "ScoreFactorRecord" $ \o ->
+    ScoreFactorRecord <$> o .: "metric" <*> o .: "delta" <*> o .: "reason"
+
+data AnalysisResultRecord = AnalysisResultRecord
+  { resHostId :: Text
+  , resDeviceId :: Text
+  , resSeverity :: Severity
+  , resScore :: Maybe Double
+  , resEngineVersion :: Text
+  , resRuleVersion :: Text
+  , resThresholdSource :: ThresholdSource
+  , resTrend :: TrendDirection
+  , resAnomalies :: [AnomalyRecord]
+  , resCorrelations :: [CorrelationRecord]
+  , resFactors :: [ScoreFactorRecord]
+  , resAnalyzedAt :: Text
+  }
+  deriving (Eq, Show)
+
+instance ToJSON AnalysisResultRecord where
+  toJSON a =
+    object
+      [ "host_id" .= resHostId a
+      , "device_id" .= resDeviceId a
+      , "severity" .= resSeverity a
+      , "score" .= resScore a
+      , "engine_version" .= resEngineVersion a
+      , "rule_version" .= resRuleVersion a
+      , "threshold_source" .= resThresholdSource a
+      , "trend" .= resTrend a
+      , "anomalies" .= resAnomalies a
+      , "correlations" .= resCorrelations a
+      , "factors" .= resFactors a
+      , "analyzed_at" .= resAnalyzedAt a
+      ]
+
+instance FromJSON AnalysisResultRecord where
+  parseJSON = withObject "AnalysisResultRecord" $ \o ->
+    AnalysisResultRecord
+      <$> o .: "host_id"
+      <*> o .: "device_id"
+      <*> o .: "severity"
+      <*> o .: "score"
+      <*> o .: "engine_version"
+      <*> o .: "rule_version"
+      <*> o .: "threshold_source"
+      <*> o .: "trend"
+      <*> o .: "anomalies"
+      <*> o .: "correlations"
+      <*> o .: "factors"
+      <*> o .: "analyzed_at"
+
+data AlertTransitionRecord = AlertTransitionRecord
+  { transStateKey :: Text
+  , transHostId :: Text
+  , transDeviceId :: Text
+  , transRuleId :: Text
+  , transKind :: AlertTransitionKind
+  , transSeverity :: Severity
+  , transSummary :: Text
+  , transMetric :: Text
+  , transObservedValue :: Maybe Double
+  , transThreshold :: Double
+  , transThresholdSource :: ThresholdSource
+  }
+  deriving (Eq, Show)
+
+instance ToJSON AlertTransitionRecord where
+  toJSON t =
+    object
+      [ "state_key" .= transStateKey t
+      , "host_id" .= transHostId t
+      , "device_id" .= transDeviceId t
+      , "rule_id" .= transRuleId t
+      , "transition" .= transKind t
+      , "severity" .= transSeverity t
+      , "summary" .= transSummary t
+      , "metric" .= transMetric t
+      , "observed_value" .= transObservedValue t
+      , "threshold" .= transThreshold t
+      , "threshold_source" .= transThresholdSource t
+      ]
+
+instance FromJSON AlertTransitionRecord where
+  parseJSON = withObject "AlertTransitionRecord" $ \o ->
+    AlertTransitionRecord
+      <$> o .: "state_key"
+      <*> o .: "host_id"
+      <*> o .: "device_id"
+      <*> o .: "rule_id"
+      <*> o .: "transition"
+      <*> o .: "severity"
+      <*> o .: "summary"
+      <*> o .: "metric"
+      <*> o .: "observed_value"
+      <*> o .: "threshold"
+      <*> o .: "threshold_source"
+
+data AnalyzeResponse = AnalyzeResponse
+  { respSchemaVersion :: Text
+  , respEngineVersion :: Text
+  , respRuleVersion :: Text
+  , respAnalyzedAt :: Text
+  , respAnalysisResults :: [AnalysisResultRecord]
+  , respAlertTransitions :: [AlertTransitionRecord]
+  , respNextAlertStates :: [AlertStateSnapshot]
+  }
+  deriving (Eq, Show)
+
+instance ToJSON AnalyzeResponse where
+  toJSON r =
+    object
+      [ "schema_version" .= respSchemaVersion r
+      , "engine_version" .= respEngineVersion r
+      , "rule_version" .= respRuleVersion r
+      , "analyzed_at" .= respAnalyzedAt r
+      , "analysis_results" .= respAnalysisResults r
+      , "alert_transitions" .= respAlertTransitions r
+      , "next_alert_states" .= respNextAlertStates r
+      ]
+
+instance FromJSON AnalyzeResponse where
+  parseJSON = withObject "AnalyzeResponse" $ \o ->
+    AnalyzeResponse
+      <$> o .: "schema_version"
+      <*> o .: "engine_version"
+      <*> o .: "rule_version"
+      <*> o .: "analyzed_at"
+      <*> o .: "analysis_results"
+      <*> o .: "alert_transitions"
+      <*> o .: "next_alert_states"

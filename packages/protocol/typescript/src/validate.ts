@@ -12,7 +12,9 @@ export type SchemaName =
   | "collector-status"
   | "diagnostic"
   | "smart-report"
-  | "ipc-message";
+  | "ipc-message"
+  | "analyze-request"
+  | "analyze-response";
 
 export interface ValidationResult {
   valid: boolean;
@@ -29,6 +31,7 @@ const SCHEMA_FILES: readonly string[] = [
   "diagnostic.schema.json",
   "smart-report.schema.json",
   "ipc-message.schema.json",
+  "analyze.schema.json",
 ];
 
 const SCHEMA_IDS: Record<SchemaName, string> = {
@@ -40,6 +43,8 @@ const SCHEMA_IDS: Record<SchemaName, string> = {
   diagnostic: "https://lhm.local/schemas/v1/diagnostic.schema.json",
   "smart-report": "https://lhm.local/schemas/v1/smart-report.schema.json",
   "ipc-message": "https://lhm.local/schemas/v1/ipc-message.schema.json",
+  "analyze-request": "https://lhm.local/schemas/v1/analyze.schema.json#/$defs/AnalyzeRequest",
+  "analyze-response": "https://lhm.local/schemas/v1/analyze.schema.json#/$defs/AnalyzeResponse",
 };
 
 const currentDir = dirname(fileURLToPath(import.meta.url));

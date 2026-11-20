@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/analyze.schema.json",
+  "title": "Health Engine Analyze Protocol",
+  "$defs": {
+    "RuleOperator": {
+      "type": "string",
+      "enum": ["gt", "gte", "lt", "lte"]
+    },
+    "ThresholdSource": {
+      "type": "string",
+      "enum": ["hardware_limit", "user_device_override", "generic_default", "unavailable"]
+    },
+    "TrendDirection": {
+      "type": "string",
+      "enum": ["rising", "stable", "falling", "insufficient_data"]
+    },
+    "AlertStateName": {
+      "type": "string",
+      "enum": ["ok", "pending", "firing", "resolved"]
+    },
+    "AlertTransitionKind": {
+      "type": "string",
+      "enum": ["noop", "trigger", "escalate", "resolve"]
+    },
+    "AlertRuleSpec": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "rule_id",
+        "metric",
+        "device_type",
+        "operator",
+        "threshold",
+        "unit",
+        "duration_seconds",
+        "severity",
+        "enabled"
+      ],
+      "properties": {
+        "rule_id": { "type": "string", "minLength": 1 },
+        "metric": { "type": "string", "minLength": 1 },
+        "device_type": { "$ref": "common.schema.json#/$defs/DeviceType" },
+        "device_id": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/StableId" },
+            { "type": "null" }
+          ]
+        },
+        "operator": { "$ref": "#/$defs/RuleOperator" },
+        "threshold": { "type": "number" },
+        "unit": { "$ref": "common.schema.json#/$defs/Unit" },
+        "duration_seconds": { "type": "integer", "minimum": 0 },
+        "severity": { "$ref": "common.schema.json#/$defs/Severity" },
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "HardwareLimit": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["device_id", "metric", "unit", "source"],
+      "properties": {
+        "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+        "metric": { "type": "string", "minLength": 1 },
+        "unit": { "$ref": "common.schema.json#/$defs/Unit" },
+        "max_value": { "type": ["number", "null"] },
+        "crit_value": { "type": ["number", "null"] },
+        "source": { "type": "string", "minLength": 1 }
+      }
+    },
+    "AlertStateSnapshot": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["state_key", "host_id", "device_id", "rule_id", "state", "last_evaluated_at"],
+      "properties": {
+        "state_key": { "type": "string", "minLength": 1 },
+        "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+        "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+        "rule_id": { "type": "string", "minLength": 1 },
+        "state": { "$ref": "#/$defs/AlertStateName" },
+        "pending_since": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+            { "type": "null" }
+          ]
+        },
+        "firing_since": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+            { "type": "null" }
+          ]
+        },
+        "last_evaluated_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" }
+      }
+    },
+    "AnalyzeRequest": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "schema_version",
+        "host_id",
+        "evaluated_at",
+        "rule_version",
+        "devices",
+        "readings",
+        "history_points",
+        "rules",
+        "hardware_limits",
+        "prev_alert_states"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/SchemaVersion" },
+        "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+        "evaluated_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+        "rule_version": { "type": "string", "minLength": 1 },
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["device_id", "device_type", "device_status"],
+            "properties": {
+              "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+              "device_type": { "$ref": "common.schema.json#/$defs/DeviceType" },
+              "device_status": { "$ref": "common.schema.json#/$defs/DeviceStatus" }
+            }
+          }
+        },
+        "readings": {
+          "type": "array",
+          "items": { "$ref": "sensor-reading.schema.json" }
+        },
+        "history_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["device_id", "sensor_id", "metric", "value", "quality", "collected_at"],
+            "properties": {
+              "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+              "sensor_id": { "$ref": "common.schema.json#/$defs/StableId" },
+              "metric": { "type": "string", "minLength": 1 },
+              "value": { "type": ["number", "null"] },
+              "quality": { "$ref": "common.schema.json#/$defs/ReadingQuality" },
+              "collected_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" }
+            }
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AlertRuleSpec" }
+        },
+        "hardware_limits": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/HardwareLimit" }
+        },
+        "prev_alert_states": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AlertStateSnapshot" }
+        }
+      }
+    },
+    "AnalyzeResponse": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "schema_version",
+        "engine_version",
+        "rule_version",
+        "analyzed_at",
+        "analysis_results",
+        "alert_transitions",
+        "next_alert_states"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/SchemaVersion" },
+        "engine_version": { "type": "string", "minLength": 1 },
+        "rule_version": { "type": "string", "minLength": 1 },
+        "analyzed_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+        "analysis_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "host_id",
+              "device_id",
+              "severity",
+              "score",
+              "engine_version",
+              "rule_version",
+              "threshold_source",
+              "trend",
+              "anomalies",
+              "correlations",
+              "factors",
+              "analyzed_at"
+            ],
+            "properties": {
+              "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+              "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+              "severity": { "$ref": "common.schema.json#/$defs/Severity" },
+              "score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+              "engine_version": { "type": "string", "minLength": 1 },
+              "rule_version": { "type": "string", "minLength": 1 },
+              "threshold_source": { "$ref": "#/$defs/ThresholdSource" },
+              "trend": { "$ref": "#/$defs/TrendDirection" },
+              "anomalies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["code", "reason"],
+                  "properties": {
+                    "code": { "type": "string", "minLength": 1 },
+                    "reason": { "type": "string", "minLength": 1 }
+                  }
+                }
+              },
+              "correlations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["code", "summary"],
+                  "properties": {
+                    "code": { "type": "string", "minLength": 1 },
+                    "summary": { "type": "string", "minLength": 1 }
+                  }
+                }
+              },
+              "factors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["metric", "delta", "reason"],
+                  "properties": {
+                    "metric": { "type": "string", "minLength": 1 },
+                    "delta": { "type": "number" },
+                    "reason": { "type": "string", "minLength": 1 }
+                  }
+                }
+              },
+              "analyzed_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" }
+            }
+          }
+        },
+        "alert_transitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "state_key",
+              "host_id",
+              "device_id",
+              "rule_id",
+              "transition",
+              "severity",
+              "summary",
+              "metric",
+              "observed_value",
+              "threshold",
+              "threshold_source"
+            ],
+            "properties": {
+              "state_key": { "type": "string", "minLength": 1 },
+              "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+              "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+              "rule_id": { "type": "string", "minLength": 1 },
+              "transition": { "$ref": "#/$defs/AlertTransitionKind" },
+              "severity": { "$ref": "common.schema.json#/$defs/Severity" },
+              "summary": { "type": "string", "minLength": 1 },
+              "metric": { "type": "string", "minLength": 1 },
+              "observed_value": { "type": ["number", "null"] },
+              "threshold": { "type": "number" },
+              "threshold_source": { "$ref": "#/$defs/ThresholdSource" }
+            }
+          }
+        },
+        "next_alert_states": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AlertStateSnapshot" }
+        }
+      }
+    }
+  }
+}

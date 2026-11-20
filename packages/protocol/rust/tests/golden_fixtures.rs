@@ -1,6 +1,7 @@
 use lhm_protocol::{
-    CollectorStatus, Device, Diagnostic, FrameDecoder, Host, IPC_MAX_FRAME_BYTES, IpcMessage,
-    ProtocolError, Sensor, SensorReading, SmartReport, encode_frame,
+    AnalyzeRequest, AnalyzeResponse, CollectorStatus, Device, Diagnostic, FrameDecoder, Host,
+    IPC_MAX_FRAME_BYTES, IpcMessage, ProtocolError, Sensor, SensorReading, SmartReport,
+    encode_frame,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -58,6 +59,8 @@ fn valid_golden_fixtures_roundtrip() {
     );
     assert_valid_roundtrip::<IpcMessage>("valid/ipc-hello.json");
     assert_valid_roundtrip::<IpcMessage>("valid/ipc-sensor-readings.json");
+    assert_valid_roundtrip::<AnalyzeRequest>("valid/analyze-request.json");
+    assert_valid_roundtrip::<AnalyzeResponse>("valid/analyze-response.json");
 }
 
 #[test]

@@ -34,6 +34,8 @@ describe("JSON Schema golden valid fixtures", () => {
     ["smart-report", "valid/smart-report-nvme-bigint.json"],
     ["ipc-message", "valid/ipc-hello.json"],
     ["ipc-message", "valid/ipc-sensor-readings.json"],
+    ["analyze-request", "valid/analyze-request.json"],
+    ["analyze-response", "valid/analyze-response.json"],
   ];
 
   for (const [schema, file] of validCases) {

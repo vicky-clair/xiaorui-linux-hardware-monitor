@@ -79,6 +79,8 @@ main = do
     exitFailure
   _ <- assertValid (Proxy :: Proxy IpcMessage) (dir </> "valid" </> "ipc-hello.json")
   _ <- assertValid (Proxy :: Proxy IpcMessage) (dir </> "valid" </> "ipc-sensor-readings.json")
+  _ <- assertValid (Proxy :: Proxy AnalyzeRequest) (dir </> "valid" </> "analyze-request.json")
+  _ <- assertValid (Proxy :: Proxy AnalyzeResponse) (dir </> "valid" </> "analyze-response.json")
 
   assertInvalid (Proxy :: Proxy SensorReading) (dir </> "invalid" </> "sensor-reading-missing-with-zero.json")
   assertInvalid (Proxy :: Proxy SensorReading) (dir </> "invalid" </> "sensor-reading-valid-with-null.json")

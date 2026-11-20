@@ -4,12 +4,15 @@ import { loadConfig, type ApiConfig } from "./config/env.ts";
 import { IpcProcessor } from "./ipc/processor.ts";
 import { errorResponse } from "./middleware/envelope.ts";
 import { AggregationRepository } from "./repositories/aggregationRepo.ts";
+import { AlertRepository } from "./repositories/alertRepo.ts";
 import { AuthRepository } from "./repositories/authRepo.ts";
 import { openDatabase, type DatabaseHandle } from "./repositories/db.ts";
 import { TelemetryRepository } from "./repositories/telemetryRepo.ts";
+import { createAlertRoutes } from "./routes/alerts.ts";
 import { createAuthRoutes } from "./routes/auth.ts";
 import { healthRoute } from "./routes/health.ts";
 import { createTelemetryRoutes } from "./routes/telemetry.ts";
+import { HealthAnalysisService } from "./services/healthClient.ts";
 import { RealtimeHub } from "./websocket/hub.ts";
 
 export interface AppRuntime {
@@ -18,8 +21,10 @@ export interface AppRuntime {
   dbHandle: DatabaseHandle;
   telemetryRepo: TelemetryRepository;
   aggregationRepo: AggregationRepository;
+  alertRepo: AlertRepository;
   authRepo: AuthRepository;
   authService: AuthService;
+  healthService: HealthAnalysisService;
   ipcProcessor: IpcProcessor;
   hub: RealtimeHub;
   close: () => void;
@@ -29,6 +34,8 @@ function buildElysiaApp(deps: {
   config: ApiConfig;
   authService: AuthService;
   authRepo: AuthRepository;
+  alertRepo: AlertRepository;
+  healthService: HealthAnalysisService;
   telemetryRepo: TelemetryRepository;
   hub: RealtimeHub;
 }) {
@@ -45,7 +52,8 @@ function buildElysiaApp(deps: {
     })
     .use(healthRoute)
     .use(createAuthRoutes(deps.authService, deps.authRepo))
-    .use(createTelemetryRoutes(deps));
+    .use(createTelemetryRoutes(deps))
+    .use(createAlertRoutes(deps));
 }
 
 export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
@@ -53,15 +61,24 @@ export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
   const dbHandle = openDatabase(config.dbPath);
   const telemetryRepo = new TelemetryRepository(dbHandle);
   const aggregationRepo = new AggregationRepository(dbHandle);
+  const alertRepo = new AlertRepository(dbHandle);
   const authRepo = new AuthRepository(dbHandle);
   const authService = new AuthService(authRepo, config);
   const hub = new RealtimeHub();
   const ipcProcessor = new IpcProcessor(telemetryRepo, hub);
+  const healthService = new HealthAnalysisService(
+    config,
+    telemetryRepo,
+    alertRepo,
+    hub,
+  );
 
   const app = buildElysiaApp({
     config,
     authService,
     authRepo,
+    alertRepo,
+    healthService,
     telemetryRepo,
     hub,
   });
@@ -72,15 +89,17 @@ export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
     dbHandle,
     telemetryRepo,
     aggregationRepo,
+    alertRepo,
     authRepo,
     authService,
+    healthService,
     ipcProcessor,
     hub,
     close: () => dbHandle.close(),
   };
 }
 
-/** Convenience helper for lightweight Phase 0/2 tests using in-memory SQLite. */
+/** Convenience helper for lightweight tests using in-memory SQLite. */
 export function createApp(overrides?: Partial<ApiConfig>) {
   return createAppRuntime({ dbPath: ":memory:", ...overrides }).app;
 }

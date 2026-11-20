@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.1",
+  "engine_version": "0.1.0",
+  "rule_version": "rules-v1",
+  "analyzed_at": "2026-11-20T10:05:00Z",
+  "analysis_results": [
+    {
+      "host_id": "debian-host-01",
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "severity": "warning",
+      "score": 78.0,
+      "engine_version": "0.1.0",
+      "rule_version": "rules-v1",
+      "threshold_source": "user_device_override",
+      "trend": "rising",
+      "anomalies": [],
+      "correlations": [],
+      "factors": [
+        {
+          "metric": "temperature",
+          "delta": -22.0,
+          "reason": "Rule cpu-temp-warn exceeded (86.0 >= 80.0 celsius)"
+        }
+      ],
+      "analyzed_at": "2026-11-20T10:05:00Z"
+    }
+  ],
+  "alert_transitions": [
+    {
+      "state_key": "debian-host-01:hwmon-coretemp-coretemp-0:cpu-temp-warn",
+      "host_id": "debian-host-01",
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "rule_id": "cpu-temp-warn",
+      "transition": "trigger",
+      "severity": "warning",
+      "summary": "temperature reached 86.0 celsius (threshold >= 80.0)",
+      "metric": "temperature",
+      "observed_value": 86.0,
+      "threshold": 80.0,
+      "threshold_source": "user_device_override"
+    }
+  ],
+  "next_alert_states": [
+    {
+      "state_key": "debian-host-01:hwmon-coretemp-coretemp-0:cpu-temp-warn",
+      "host_id": "debian-host-01",
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "rule_id": "cpu-temp-warn",
+      "state": "firing",
+      "pending_since": "2026-11-20T10:03:00Z",
+      "firing_since": "2026-11-20T10:05:00Z",
+      "last_evaluated_at": "2026-11-20T10:05:00Z"
+    }
+  ]
+}

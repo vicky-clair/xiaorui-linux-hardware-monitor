@@ -2,6 +2,12 @@
 
 All notable changes to the Linux Hardware Monitor shared protocol (`packages/protocol`) are documented in this file.
 
+## [1.1] - 2026-11-20
+
+### Added
+- Backward-compatible `schemas/analyze.schema.json` defining `AnalyzeRequest` and `AnalyzeResponse` for the Bun API ↔ Haskell Health Engine stateless HTTP JSON interface (ADR-0004, ADR-0007).
+- Golden fixtures `examples/valid/analyze-request.json` and `examples/valid/analyze-response.json` validated across TypeScript (Ajv), Rust (`serde`), and Haskell (`aeson`).
+
 ## [1.0] - 2026-11-20
 
 ### Added

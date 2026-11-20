@@ -24,17 +24,26 @@ library
     Health.Trends
     Health.Types
   build-depends:
+    , aeson         >=2.2  && <2.3
     , base          >=4.18 && <5
+    , bytestring    >=0.11 && <0.13
+    , containers    >=0.6  && <0.8
     , lhm-protocol
     , text          >=2.0  && <2.2
+    , time          >=1.12 && <1.15
 
 executable lhm-health-engine
   import:         shared
   hs-source-dirs: app
   main-is:        Main.hs
+  ghc-options:    -threaded -rtsopts -with-rtsopts=-N2
   build-depends:
+    , aeson
     , base
+    , bytestring
     , lhm-health-engine
+    , lhm-protocol
+    , network            >=3.1 && <3.3
     , text
 
 test-suite lhm-health-engine-test
@@ -43,7 +52,9 @@ test-suite lhm-health-engine-test
   hs-source-dirs: test
   main-is:        Main.hs
   build-depends:
+    , aeson
     , base
+    , bytestring
     , lhm-health-engine
     , lhm-protocol
     , text

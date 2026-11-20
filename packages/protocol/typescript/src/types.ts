@@ -221,3 +221,111 @@ export type IpcMessage =
   | IpcEnvelope<"collector_status", { collectors: CollectorStatus[] }>
   | IpcEnvelope<"diagnostic", { diagnostic: Diagnostic }>
   | IpcEnvelope<"error", { error_code: string; message: string }>;
+
+export type RuleOperator = "gt" | "gte" | "lt" | "lte";
+export type ThresholdSource =
+  | "hardware_limit"
+  | "user_device_override"
+  | "generic_default"
+  | "unavailable";
+export type TrendDirection = "rising" | "stable" | "falling" | "insufficient_data";
+export type AlertStateName = "ok" | "pending" | "firing" | "resolved";
+export type AlertTransitionKind = "noop" | "trigger" | "escalate" | "resolve";
+
+export interface AlertRuleSpec {
+  rule_id: string;
+  metric: string;
+  device_type: DeviceType;
+  device_id?: string | null;
+  operator: RuleOperator;
+  threshold: number;
+  unit: Unit;
+  duration_seconds: number;
+  severity: Severity;
+  enabled: boolean;
+}
+
+export interface HardwareLimit {
+  device_id: string;
+  metric: string;
+  unit: Unit;
+  max_value?: number | null;
+  crit_value?: number | null;
+  source: string;
+}
+
+export interface AlertStateSnapshot {
+  state_key: string;
+  host_id: string;
+  device_id: string;
+  rule_id: string;
+  state: AlertStateName;
+  pending_since?: UtcTimestamp | null;
+  firing_since?: UtcTimestamp | null;
+  last_evaluated_at: UtcTimestamp;
+}
+
+export interface HistoryPoint {
+  device_id: string;
+  sensor_id: string;
+  metric: string;
+  value: number | null;
+  quality: ReadingQuality;
+  collected_at: UtcTimestamp;
+}
+
+export interface AnalyzeRequest {
+  schema_version: string;
+  host_id: string;
+  evaluated_at: UtcTimestamp;
+  rule_version: string;
+  devices: Array<{
+    device_id: string;
+    device_type: DeviceType;
+    device_status: DeviceStatus;
+  }>;
+  readings: SensorReading[];
+  history_points: HistoryPoint[];
+  rules: AlertRuleSpec[];
+  hardware_limits: HardwareLimit[];
+  prev_alert_states: AlertStateSnapshot[];
+}
+
+export interface AnalysisResultRecord {
+  host_id: string;
+  device_id: string;
+  severity: Severity;
+  score: number | null;
+  engine_version: string;
+  rule_version: string;
+  threshold_source: ThresholdSource;
+  trend: TrendDirection;
+  anomalies: Array<{ code: string; reason: string }>;
+  correlations: Array<{ code: string; summary: string }>;
+  factors: Array<{ metric: string; delta: number; reason: string }>;
+  analyzed_at: UtcTimestamp;
+}
+
+export interface AlertTransitionRecord {
+  state_key: string;
+  host_id: string;
+  device_id: string;
+  rule_id: string;
+  transition: AlertTransitionKind;
+  severity: Severity;
+  summary: string;
+  metric: string;
+  observed_value: number | null;
+  threshold: number;
+  threshold_source: ThresholdSource;
+}
+
+export interface AnalyzeResponse {
+  schema_version: string;
+  engine_version: string;
+  rule_version: string;
+  analyzed_at: UtcTimestamp;
+  analysis_results: AnalysisResultRecord[];
+  alert_transitions: AlertTransitionRecord[];
+  next_alert_states: AlertStateSnapshot[];
+}

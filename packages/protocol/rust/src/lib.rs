@@ -457,6 +457,184 @@ impl<'de> Deserialize<'de> for IpcMessage {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RuleOperator {
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ThresholdSource {
+    HardwareLimit,
+    UserDeviceOverride,
+    GenericDefault,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TrendDirection {
+    Rising,
+    Stable,
+    Falling,
+    InsufficientData,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AlertStateName {
+    Ok,
+    Pending,
+    Firing,
+    Resolved,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AlertTransitionKind {
+    Noop,
+    Trigger,
+    Escalate,
+    Resolve,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AlertRuleSpec {
+    pub rule_id: String,
+    pub metric: String,
+    pub device_type: DeviceType,
+    #[serde(default)]
+    pub device_id: Option<String>,
+    pub operator: RuleOperator,
+    pub threshold: f64,
+    pub unit: Unit,
+    pub duration_seconds: u64,
+    pub severity: Severity,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HardwareLimit {
+    pub device_id: String,
+    pub metric: String,
+    pub unit: Unit,
+    #[serde(default)]
+    pub max_value: Option<f64>,
+    #[serde(default)]
+    pub crit_value: Option<f64>,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AlertStateSnapshot {
+    pub state_key: String,
+    pub host_id: String,
+    pub device_id: String,
+    pub rule_id: String,
+    pub state: AlertStateName,
+    #[serde(default)]
+    pub pending_since: Option<String>,
+    #[serde(default)]
+    pub firing_since: Option<String>,
+    pub last_evaluated_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnalyzeDeviceRef {
+    pub device_id: String,
+    pub device_type: DeviceType,
+    pub device_status: DeviceStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HistoryPoint {
+    pub device_id: String,
+    pub sensor_id: String,
+    pub metric: String,
+    pub value: Option<f64>,
+    pub quality: ReadingQuality,
+    pub collected_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnalyzeRequest {
+    pub schema_version: String,
+    pub host_id: String,
+    pub evaluated_at: String,
+    pub rule_version: String,
+    pub devices: Vec<AnalyzeDeviceRef>,
+    pub readings: Vec<SensorReading>,
+    pub history_points: Vec<HistoryPoint>,
+    pub rules: Vec<AlertRuleSpec>,
+    pub hardware_limits: Vec<HardwareLimit>,
+    pub prev_alert_states: Vec<AlertStateSnapshot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AnomalyRecord {
+    pub code: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CorrelationRecord {
+    pub code: String,
+    pub summary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ScoreFactorRecord {
+    pub metric: String,
+    pub delta: f64,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnalysisResultRecord {
+    pub host_id: String,
+    pub device_id: String,
+    pub severity: Severity,
+    pub score: Option<f64>,
+    pub engine_version: String,
+    pub rule_version: String,
+    pub threshold_source: ThresholdSource,
+    pub trend: TrendDirection,
+    pub anomalies: Vec<AnomalyRecord>,
+    pub correlations: Vec<CorrelationRecord>,
+    pub factors: Vec<ScoreFactorRecord>,
+    pub analyzed_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AlertTransitionRecord {
+    pub state_key: String,
+    pub host_id: String,
+    pub device_id: String,
+    pub rule_id: String,
+    pub transition: AlertTransitionKind,
+    pub severity: Severity,
+    pub summary: String,
+    pub metric: String,
+    pub observed_value: Option<f64>,
+    pub threshold: f64,
+    pub threshold_source: ThresholdSource,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnalyzeResponse {
+    pub schema_version: String,
+    pub engine_version: String,
+    pub rule_version: String,
+    pub analyzed_at: String,
+    pub analysis_results: Vec<AnalysisResultRecord>,
+    pub alert_transitions: Vec<AlertTransitionRecord>,
+    pub next_alert_states: Vec<AlertStateSnapshot>,
+}
+
 /// Encodes a serializable message into a 4-byte big-endian length-prefixed UTF-8 JSON frame (ADR-0003).
 pub fn encode_frame<T: Serialize>(value: &T) -> Result<Vec<u8>, ProtocolError> {
     let payload = serde_json::to_vec(value).map_err(|e| ProtocolError::Json(e.to_string()))?;

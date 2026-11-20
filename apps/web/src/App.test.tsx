@@ -14,6 +14,8 @@ import {
 } from "./components/StatusBadge.tsx";
 import { buildTimeSeriesOption } from "./components/TimeSeriesChart.tsx";
 import { formatReadingValue, resolveTimeRange } from "./lib/format.ts";
+import { AlertsView } from "./pages/AlertsPage.tsx";
+import { AnalysisView } from "./pages/AnalysisPage.tsx";
 import { ConfigView } from "./pages/ConfigPage.tsx";
 import { CoverageView } from "./pages/CoveragePage.tsx";
 import { LoginPage } from "./pages/LoginPage.tsx";
@@ -123,7 +125,64 @@ describe("Core page rendering", () => {
       />,
     );
     expect(overviewHtml).toContain("debian-node");
-    expect(overviewHtml).toContain("不在前端推断健康状态");
+    expect(overviewHtml).toContain("绝不在前端推断健康状态");
+
+    const analysisHtml = renderToStaticMarkup(
+      <AnalysisView
+        results={[
+          {
+            id: 1,
+            host_id: "host-1",
+            device_id: "cpu-system-0",
+            severity: "unknown",
+            score: null,
+            engine_version: "0.1.0",
+            rule_version: "rules-v1",
+            threshold_source: "hardware_limit",
+            trend: "insufficient_data",
+            anomalies: [],
+            correlations: [],
+            factors: [
+              { metric: "quality", delta: 0, reason: "DATA_STALE: expired" },
+            ],
+            analyzed_at: "2026-11-20T10:00:00Z",
+          },
+        ]}
+        canRun={true}
+        running={false}
+        onRun={() => {}}
+      />,
+    );
+    expect(analysisHtml).toContain("无法评分");
+    expect(analysisHtml).toContain("DATA_STALE");
+
+    const alertsHtml = renderToStaticMarkup(
+      <AlertsView
+        user={{ user_id: "u1", username: "viewer1", role: "viewer" }}
+        alerts={[
+          {
+            alert_id: "alt-1",
+            host_id: "host-1",
+            device_id: "cpu-system-0",
+            rule_id: "cpu-hot",
+            severity: "warning",
+            status: "firing",
+            summary: "CPU temperature high",
+            triggered_at: "2026-11-20T10:00:00Z",
+            acknowledged_at: null,
+            acknowledged_by: null,
+            resolved_at: null,
+          },
+        ]}
+        rules={[]}
+        onAck={() => {}}
+        onCreateRule={() => {}}
+        onDeleteRule={() => {}}
+        warning={null}
+      />,
+    );
+    expect(alertsHtml).toContain("CPU temperature high");
+    expect(alertsHtml).toContain("只读角色（viewer）");
 
     const covHtml = renderToStaticMarkup(
       <CoverageView

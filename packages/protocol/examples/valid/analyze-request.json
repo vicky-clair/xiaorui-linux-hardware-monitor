@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.1",
+  "host_id": "debian-host-01",
+  "evaluated_at": "2026-11-20T10:05:00Z",
+  "rule_version": "rules-v1",
+  "devices": [
+    {
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "device_type": "cpu",
+      "device_status": "online"
+    }
+  ],
+  "readings": [
+    {
+      "schema_version": "1.0",
+      "host_id": "debian-host-01",
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "sensor_id": "hwmon-coretemp-coretemp-0-temperature-package-id-0",
+      "metric": "temperature",
+      "value": 86.0,
+      "unit": "celsius",
+      "quality": "valid",
+      "source": "hwmon",
+      "collected_at": "2026-11-20T10:05:00Z"
+    }
+  ],
+  "history_points": [
+    {
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "sensor_id": "hwmon-coretemp-coretemp-0-temperature-package-id-0",
+      "metric": "temperature",
+      "value": 72.0,
+      "quality": "valid",
+      "collected_at": "2026-11-20T10:01:00Z"
+    },
+    {
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "sensor_id": "hwmon-coretemp-coretemp-0-temperature-package-id-0",
+      "metric": "temperature",
+      "value": 79.0,
+      "quality": "valid",
+      "collected_at": "2026-11-20T10:03:00Z"
+    },
+    {
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "sensor_id": "hwmon-coretemp-coretemp-0-temperature-package-id-0",
+      "metric": "temperature",
+      "value": 86.0,
+      "quality": "valid",
+      "collected_at": "2026-11-20T10:05:00Z"
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "cpu-temp-warn",
+      "metric": "temperature",
+      "device_type": "cpu",
+      "device_id": null,
+      "operator": "gte",
+      "threshold": 80.0,
+      "unit": "celsius",
+      "duration_seconds": 60,
+      "severity": "warning",
+      "enabled": true
+    }
+  ],
+  "hardware_limits": [
+    {
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "metric": "temperature",
+      "unit": "celsius",
+      "max_value": 105.0,
+      "crit_value": 105.0,
+      "source": "hwmon-coretemp-crit"
+    }
+  ],
+  "prev_alert_states": []
+}

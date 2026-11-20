@@ -12,6 +12,8 @@ export interface ApiConfig {
   retention1mDays: number;
   retention1hDays: number;
   retentionSmartDays: number;
+  healthEngineUrl: string;
+  healthEngineTimeoutMs: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -34,5 +36,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     retention1mDays: Number(env.LHM_RETENTION_1M_DAYS ?? "90"),
     retention1hDays: Number(env.LHM_RETENTION_1H_DAYS ?? "365"),
     retentionSmartDays: Number(env.LHM_RETENTION_SMART_DAYS ?? "365"),
+    healthEngineUrl: env.LHM_HEALTH_ENGINE_URL ?? "http://127.0.0.1:8090",
+    healthEngineTimeoutMs: Number(env.LHM_HEALTH_ENGINE_TIMEOUT_MS ?? "5000"),
   };
 }
