@@ -17,6 +17,12 @@ services:
       - ALL
     cpus: "0.50"
     mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8090/health"]
+      interval: 5m
+      timeout: 5s
+      start_period: 5s
+      retries: 3
     environment:
       LHM_HEALTH_BIND: "0.0.0.0"
       LHM_HEALTH_PORT: "8090"
@@ -35,6 +41,12 @@ services:
       - ALL
     cpus: "0.75"
     mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5m
+      timeout: 5s
+      start_period: 10s
+      retries: 3
     depends_on:
       health-engine:
         condition: service_healthy
@@ -47,7 +59,8 @@ services:
       LHM_HEALTH_ENGINE_TIMEOUT_MS: "${LHM_HEALTH_ENGINE_TIMEOUT_MS:-5000}"
       LHM_COOKIE_SECURE: "${LHM_COOKIE_SECURE:-false}"
       LHM_ALLOWED_ORIGINS: "${LHM_ALLOWED_ORIGINS:-http://localhost:18080,http://127.0.0.1:18080,tauri://localhost,http://tauri.localhost}"
-      LHM_STALE_AFTER_SECONDS: "${LHM_STALE_AFTER_SECONDS:-60}"
+      LHM_STALE_AFTER_SECONDS: "${LHM_STALE_AFTER_SECONDS:-46800}"
+      LHM_MAINTENANCE_INTERVAL_SECONDS: "${LHM_MAINTENANCE_INTERVAL_SECONDS:-43200}"
       LHM_RETENTION_RAW_DAYS: "${LHM_RETENTION_RAW_DAYS:-14}"
       LHM_RETENTION_1M_DAYS: "${LHM_RETENTION_1M_DAYS:-90}"
       LHM_RETENTION_1H_DAYS: "${LHM_RETENTION_1H_DAYS:-365}"
@@ -70,6 +83,12 @@ services:
       - ALL
     cpus: "0.25"
     mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/nginx-health"]
+      interval: 5m
+      timeout: 5s
+      start_period: 5s
+      retries: 3
     depends_on:
       api:
         condition: service_healthy

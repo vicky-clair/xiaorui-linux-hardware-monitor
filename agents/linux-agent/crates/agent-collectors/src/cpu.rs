@@ -375,31 +375,61 @@ impl Collector for CpuCollector {
             }
 
             // 4. Optional Intel RAPL energy delta -> Watts
+            // 低频/12小时模式下（prev 不存在或间隔 > 60s）主动做 500ms 短双采样，
+            // 既避免 32-bit energy_uj 计数器跨小时溢出回绕，也确保首次与每次唤醒都能立即产出准确功耗值。
             let rapl_cap = self.state.read().expect("lock").rapl_cap;
             if rapl_cap == Some(CapabilityStatus::Supported)
-                && let Ok(raw) = ctx
+                && let Ok(raw1) = ctx
                     .sysfs
                     .read_to_string("/sys/class/powercap/intel-rapl:0/energy_uj")
-                && let Ok(uj) = raw.trim().parse::<u64>()
+                && let Ok(uj1) = raw1.trim().parse::<u64>()
             {
-                let ts = Instant::now();
+                let ts1 = Instant::now();
                 let prev = {
                     let mut st = self.state.write().expect("lock");
                     let p = st.prev_rapl;
-                    st.prev_rapl = Some((uj, ts));
+                    st.prev_rapl = Some((uj1, ts1));
                     p
                 };
-                if let Some((prev_uj, prev_ts)) = prev {
-                    let dt = ts.duration_since(prev_ts).as_secs_f64();
-                    if dt > 0.0 && uj >= prev_uj {
-                        let watts = ((uj - prev_uj) as f64 / 1_000_000.0) / dt;
+
+                let sample = match prev {
+                    Some((prev_uj, prev_ts))
+                        if ts1.duration_since(prev_ts) <= Duration::from_secs(60)
+                            && uj1 >= prev_uj =>
+                    {
+                        Some((prev_uj, prev_ts, uj1, ts1))
+                    }
+                    _ => {
+                        tokio::time::sleep(Duration::from_millis(500)).await;
+                        if let Ok(raw2) = ctx
+                            .sysfs
+                            .read_to_string("/sys/class/powercap/intel-rapl:0/energy_uj")
+                            && let Ok(uj2) = raw2.trim().parse::<u64>()
+                        {
+                            let ts2 = Instant::now();
+                            self.state.write().expect("lock").prev_rapl = Some((uj2, ts2));
+                            if uj2 >= uj1 {
+                                Some((uj1, ts1, uj2, ts2))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                };
+
+                if let Some((start_uj, start_ts, end_uj, end_ts)) = sample {
+                    let dt = end_ts.duration_since(start_ts).as_secs_f64();
+                    if dt > 0.0 {
+                        let watts = ((end_uj - start_uj) as f64 / 1_000_000.0) / dt;
                         res.readings.push(SensorReading {
                             schema_version: SCHEMA_VERSION.into(),
                             host_id: ctx.host_id.clone(),
                             device_id: self.device_id.clone(),
                             sensor_id: sensor_id(&self.device_id, "power", "package-rapl"),
                             metric: "power".into(),
-                            value: Some(watts),
+                            value: Some((watts * 100.0).round() / 100.0),
                             unit: Unit::Watt,
                             quality: ReadingQuality::Valid,
                             source: "powercap".into(),

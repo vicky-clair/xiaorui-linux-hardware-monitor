@@ -11,11 +11,17 @@ const SUPPORTED_MAJOR = SCHEMA_VERSION.split(".")[0];
 
 export class IpcProcessor {
   private readonly validator = createProtocolValidator();
+  private onDataIngested?: () => void;
 
   constructor(
     private readonly repo: TelemetryRepository,
     private readonly hub: RealtimeHub,
   ) {}
+
+  /** 注册数据入库回调（事件驱动：Agent 上报后自动触发聚合与 Haskell 健康分析，空闲期零轮询） */
+  setOnDataIngested(cb: () => void): void {
+    this.onDataIngested = cb;
+  }
 
   processRawJson(rawJson: string): IpcMessage {
     let parsed: unknown;
@@ -121,6 +127,7 @@ export class IpcProcessor {
             { deviceId: r.device_id, sensorId: r.sensor_id },
           );
         }
+        this.onDataIngested?.();
         return this.buildReply(msg, "ack", { acked_sequence: msg.sequence });
       }
       case "smart_report": {
@@ -134,6 +141,7 @@ export class IpcProcessor {
           },
           { deviceId: msg.payload.report.device_id },
         );
+        this.onDataIngested?.();
         return this.buildReply(msg, "ack", { acked_sequence: msg.sequence });
       }
       case "collector_status": {

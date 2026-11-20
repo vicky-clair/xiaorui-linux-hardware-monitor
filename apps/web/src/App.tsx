@@ -162,7 +162,8 @@ export function App() {
       return;
     }
     refreshGlobalStatus();
-    const timer = window.setInterval(refreshGlobalStatus, 30_000);
+    // 超低开销：每 5 分钟轻量刷新一次全局告警与分析摘要（不频繁轮询 API）
+    const timer = window.setInterval(refreshGlobalStatus, 300_000);
     return () => window.clearInterval(timer);
   }, [user, refreshGlobalStatus]);
 

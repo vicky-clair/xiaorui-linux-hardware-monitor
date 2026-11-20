@@ -20,6 +20,11 @@ export function createTelemetryRoutes(deps: {
   hub: RealtimeHub;
 }) {
   const { config, authService, authRepo, telemetryRepo, hub } = deps;
+  const effectiveStaleAfter = () => {
+    const raw = authRepo.getInternalSetting("stale_after_seconds")?.value;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 10 ? n : config.staleAfterSeconds;
+  };
 
   return new Elysia({ prefix: "/api/v1" })
     .get("/system/overview", ({ request, set }) => {
@@ -28,7 +33,7 @@ export function createTelemetryRoutes(deps: {
         return errorResponse("UNAUTHORIZED", "Authentication required");
       }
       return okResponse(
-        telemetryRepo.getSystemOverview(config.staleAfterSeconds),
+        telemetryRepo.getSystemOverview(effectiveStaleAfter()),
       );
     })
     .get("/hosts", ({ request, set }) => {
@@ -106,7 +111,7 @@ export function createTelemetryRoutes(deps: {
         set.status = 401;
         return errorResponse("UNAUTHORIZED", "Authentication required");
       }
-      return okResponse(telemetryRepo.getCoverage(config.staleAfterSeconds));
+      return okResponse(telemetryRepo.getCoverage(effectiveStaleAfter()));
     })
     .get("/storage", ({ request, set }) => {
       if (!authService.authenticateRequest(request)) {

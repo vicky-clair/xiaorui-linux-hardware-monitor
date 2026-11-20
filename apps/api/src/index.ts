@@ -39,9 +39,13 @@ if (process.platform !== "win32") {
   );
 }
 
-// Background aggregation, hourly retention cleanup, & health analysis timer (every 60s)
+// 事件驱动 + 超低频维护调度：
+// 1. Agent 每次唤醒上报后防抖 3 秒立即执行一次聚合与 Haskell 健康分析；
+// 2. 空闲期（如 12 小时采集模式下）仅按 LHM_MAINTENANCE_INTERVAL_SECONDS 唤醒，不空转消耗 CPU/SQLite。
 let lastPruneAtMs = 0;
-const aggTimer = setInterval(() => {
+let ingestDebounce: ReturnType<typeof setTimeout> | null = null;
+
+const runAggregationAndAnalysis = (allowPrune: boolean) => {
   const now = Date.now();
   const from1m = new Date(now - 5 * 60_000).toISOString();
   const toNow = new Date(now + 1000).toISOString();
@@ -50,7 +54,7 @@ const aggTimer = setInterval(() => {
     const from1h = new Date(now - 2 * 3_600_000).toISOString();
     runtime.aggregationRepo.aggregate1h(from1h, toNow);
 
-    if (now - lastPruneAtMs >= 3_600_000) {
+    if (allowPrune && now - lastPruneAtMs >= 3_600_000) {
       const pruned = runtime.aggregationRepo.pruneExpired(
         {
           rawDays: runtime.config.retentionRawDays,
@@ -89,7 +93,20 @@ const aggTimer = setInterval(() => {
     );
   }
   void runtime.healthService.runCycle();
-}, 60_000);
+};
+
+runtime.ipcProcessor.setOnDataIngested(() => {
+  if (ingestDebounce) clearTimeout(ingestDebounce);
+  ingestDebounce = setTimeout(() => {
+    ingestDebounce = null;
+    runAggregationAndAnalysis(false);
+  }, 3000);
+});
+
+const maintMs = Math.max(runtime.config.maintenanceIntervalSeconds, 60) * 1000;
+const aggTimer = setInterval(() => {
+  runAggregationAndAnalysis(true);
+}, maintMs);
 
 runtime.app.listen({
   hostname: runtime.config.host,
@@ -102,10 +119,13 @@ console.info(
     component: "lhm-api",
     level: "INFO",
     message: `Listening on http://${runtime.config.host}:${runtime.config.port}`,
+    stale_after_seconds: runtime.config.staleAfterSeconds,
+    maintenance_interval_seconds: runtime.config.maintenanceIntervalSeconds,
   }),
 );
 
 const shutdown = () => {
+  if (ingestDebounce) clearTimeout(ingestDebounce);
   clearInterval(aggTimer);
   ipcServer?.stop();
   runtime.close();

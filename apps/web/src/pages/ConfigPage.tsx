@@ -83,7 +83,7 @@ export function ConfigView({
           <input
             type="number"
             min={10}
-            max={3600}
+            max={604800}
             disabled={!isAdmin}
             value={staleSec}
             onChange={(e) => setStaleSec(e.target.value)}

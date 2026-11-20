@@ -13,6 +13,7 @@ export interface ApiConfig {
   allowedOrigins: string[];
   bootstrapToken: string | null;
   staleAfterSeconds: number;
+  maintenanceIntervalSeconds: number;
   retentionRawDays: number;
   retention1mDays: number;
   retention1hDays: number;
@@ -37,6 +38,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       .filter(Boolean),
     bootstrapToken: env.LHM_BOOTSTRAP_TOKEN ?? null,
     staleAfterSeconds: Number(env.LHM_STALE_AFTER_SECONDS ?? "60"),
+    maintenanceIntervalSeconds: Number(env.LHM_MAINTENANCE_INTERVAL_SECONDS ?? "3600"),
     retentionRawDays: Number(env.LHM_RETENTION_RAW_DAYS ?? "14"),
     retention1mDays: Number(env.LHM_RETENTION_1M_DAYS ?? "90"),
     retention1hDays: Number(env.LHM_RETENTION_1H_DAYS ?? "365"),

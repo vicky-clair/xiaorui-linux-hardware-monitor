@@ -11,8 +11,8 @@ User=lhm-agent
 Group=lhm-ipc
 SupplementaryGroups=video render
 
-# Binary installed by administrator after explicit review
-ExecStart=/usr/local/bin/lhm-agent --socket /run/linux-hardware-monitor/ipc.sock --interval 5
+# 默认全局 12 小时（43200s）超低功耗采集一次；两次采集之间进程完全休眠（~0.00% CPU、零磁盘打扰）
+ExecStart=/usr/local/bin/lhm-agent --socket /run/linux-hardware-monitor/ipc.sock --interval 43200 --discovery-interval 43200
 Environment=RUST_LOG=info
 
 Restart=on-failure
