@@ -7,7 +7,7 @@
 | ---- | -------- | ----------------- | -------- | ---- |
 | Debian | `13.6`（内核 `6.12.107+deb13-amd64`） | — | 2026-11-20 | L3 实体机实测 |
 | Rust 工具链 | MSRV `1.90.0`（Edition `2024`） | 根 `Cargo.toml`、`Cargo.lock` | 2026-11-20 | L3 `1.90.0` / L0 `1.91.1` 实测 |
-| Bun | `1.4.4` | `package.json` `packageManager`、`bun.lock` | 2026-11-20 | L0 实测 |
+| Bun | `1.4.4`（Docker 镜像 `oven/bun:1.4.4-debian@sha256:93d5032fe06d163427822dc1598f420363759bb18155c9cc90eb1be05a64a19e`） | `package.json` `packageManager`、`bun.lock` | 2026-11-20 | L0 + L3 容器实测 |
 | TypeScript | `5.9.3` | `bun.lock` | 2026-11-20 | L0 实测 |
 | Ajv / ajv-formats | `8.20.0` / `3.0.1` | `bun.lock` | 2026-11-20 | JSON Schema Draft 2020-12 校验 |
 | Elysia | `1.4.32` | `bun.lock` | 2026-11-20 | L0 实测 |
