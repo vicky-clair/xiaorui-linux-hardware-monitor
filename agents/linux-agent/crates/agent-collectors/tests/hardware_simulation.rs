@@ -135,7 +135,7 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
     }"#;
     cmd.register(
         SMARTCTL_BIN,
-        &["-n", "standby", "--json=c", "-A", "/dev/sda"],
+        &["-n", "standby", "--json=c", "-H", "-A", "/dev/sda"],
         Ok(CommandOutput {
             exit_code: 0,
             stdout: sda_smart.into(),
@@ -161,7 +161,7 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
     }"#;
     cmd.register(
         SMARTCTL_BIN,
-        &["-n", "standby", "--json=c", "-A", "/dev/sdb"],
+        &["-n", "standby", "--json=c", "-H", "-A", "/dev/sdb"],
         Ok(CommandOutput {
             exit_code: 2,
             stdout: sdb_standby.into(),
@@ -187,7 +187,7 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
     }"#;
     cmd.register(
         SMARTCTL_BIN,
-        &["-n", "standby", "--json=c", "-A", "/dev/nvme0n1"],
+        &["-n", "standby", "--json=c", "-H", "-A", "/dev/nvme0n1"],
         Ok(CommandOutput {
             exit_code: 2,
             stdout: perm_denied.into(),

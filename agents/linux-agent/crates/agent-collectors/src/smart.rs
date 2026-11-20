@@ -360,8 +360,8 @@ impl Collector for SmartCollector {
                     enabled: true,
                 });
 
-                // Dual-frequency scheduling per ADR-0008 / hardware-scope.md §5.3:
-                // 30s temperature task + 15m full SMART attribute task.
+                // 低磁盘干扰双频调度（绝不唤醒待机盘，减少 USB/SATA 轮询频率以允许硬盘休眠）：
+                // NVMe 温度/健康 30s；SATA/USB 温度/健康 300s（5 分钟）；全量 SMART 报告 1800s（30 分钟）。
                 let temp_task_id = format!("smart-temp:{}", d.device_id);
                 let full_task_id = format!("smart-full:{}", d.device_id);
 
@@ -370,7 +370,7 @@ impl Collector for SmartCollector {
                     collector_name: self.name().into(),
                     device_id: d.device_id.clone(),
                     group: "smart_temp".into(),
-                    interval: Duration::from_secs(if d.is_nvme { 5 } else { 30 }),
+                    interval: Duration::from_secs(if d.is_nvme { 30 } else { 300 }),
                     timeout: Duration::from_secs(5),
                 });
                 res.tasks.push(CollectionTask {
@@ -378,7 +378,7 @@ impl Collector for SmartCollector {
                     collector_name: self.name().into(),
                     device_id: d.device_id.clone(),
                     group: "smart_full".into(),
-                    interval: Duration::from_secs(900),
+                    interval: Duration::from_secs(1800),
                     timeout: Duration::from_secs(10),
                 });
 
@@ -398,7 +398,7 @@ impl Collector for SmartCollector {
                 host_id: self.host_id.clone(),
                 status: CollectorRunStatus::Running,
                 capability_status: cap,
-                interval_seconds: 30,
+                interval_seconds: 300,
                 last_run_at: Some(utc_now_rfc3339()),
                 last_success_at: Some(utc_now_rfc3339()),
                 consecutive_failures: 0,
@@ -427,12 +427,19 @@ impl Collector for SmartCollector {
                 return res;
             };
 
-            let flag = if task.group == "smart_temp" {
-                "-A"
+            // 轻量任务同时携带 -H -A，确保 smart_status.passed 始终准确上报且不覆盖为 null
+            let args: Vec<&str> = if task.group == "smart_temp" {
+                vec![
+                    "-n",
+                    "standby",
+                    "--json=c",
+                    "-H",
+                    "-A",
+                    disk.dev_path.as_str(),
+                ]
             } else {
-                "-a"
+                vec!["-n", "standby", "--json=c", "-a", disk.dev_path.as_str()]
             };
-            let args = ["-n", "standby", "--json=c", flag, disk.dev_path.as_str()];
 
             match ctx.cmd.run(SMARTCTL_BIN, &args, task.timeout).await {
                 Ok(out) => {
@@ -504,7 +511,7 @@ impl Collector for SmartCollector {
                 host_id: self.host_id.clone(),
                 status: CollectorRunStatus::Stopped,
                 capability_status: CapabilityStatus::Unknown,
-                interval_seconds: 30,
+                interval_seconds: 300,
                 last_run_at: None,
                 last_success_at: None,
                 consecutive_failures: 0,
