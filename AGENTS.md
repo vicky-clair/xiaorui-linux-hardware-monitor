@@ -123,7 +123,7 @@ tests/             integration/、fixtures/、hardware-simulation/、protocol/
 | Web 构建 / 测试 | `bun run test:web && bun run build:web` | L0+ |
 | Haskell 构建 / 测试 | `cd core/health-engine && cabal build all && cabal test all --test-show-details=direct` | L0+ |
 | 协议校验（三端） | `bun run test:protocol` + Rust `cargo test -p lhm-protocol` + Haskell `cabal test lhm-protocol` | L0 / L3 |
-| 数据库 Migration | `bun --filter @lhm/api exec drizzle-kit generate`（阶段 2 起启用） | L0+ |
+| 数据库 Migration | `bun --filter @lhm/api db:generate` | L0+ |
 | 一键全量本地 CI | `pwsh -File scripts/ci.ps1`（L0） / `bash scripts/ci.sh`（L3） | L0 / L3 |
 
 ## 9. 文档索引
