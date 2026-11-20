@@ -2,8 +2,8 @@
 
 > 本文件记录当前开发阶段与验收情况。只有项目所有者可以确认阶段验收；AI 代理只能提交验收证据并提出申请。
 
-- **当前阶段**：阶段 5 — 生产部署
-- **阶段状态**：部署配置与 L3 隔离容器全链路实测已完成，等待项目所有者确认 ADR-0009、是否常驻启动局域网服务及阶段 5 验收
+- **当前阶段**：阶段 6 — 扩展与低开销常驻部署
+- **阶段状态**：进行中（阶段 5 与 ADR-0009 已验收并推送 GitHub，开始实施阶段 6 扩展、低硬件开销优化及 L3 常驻启动测试）
 - **最后更新**：2026-11-20
 
 ## 阶段验收记录
@@ -15,14 +15,14 @@
 | 2 | Bun API | 已验收 | 2026-11-20 | L0 全量 CI（含 API 5 套件 / 79 断言）+ SQLite 写入基准通过；L3 非 root 容器 + 原生 Rust Agent 真实 Unix Socket 端到端入库与认证查询通过；Tag `v0.2.0-phase2` |
 | 3 | React Web | 已验收 | 2026-11-20 | 全部 14 个阶段 3 视图实现完成；L0 全量 CI（Web 5 套件 / 33 断言 + Vite 生产构建）与 L3 非 root 容器验证通过；Tag `v0.3.0-phase3` |
 | 4 | Haskell 健康分析与告警 | 已验收 | 2026-11-20 | 共享协议 v1.1（`analyze.schema.json`）三端黄金样例通过；Haskell 10 模块纯计算 + 无状态 HTTP 服务通过单测并与 Bun API 实机联调通过；Bun API 告警生命周期/去重/降级 + Web 告警中心与健康分析页通过 L0/L3 验证；Tag `v0.4.0-phase4` |
-| 5 | 生产部署 | 待验收 | — | ADR-0009 已起草；Docker Compose 非 root 三容器（Haskell/Bun/Nginx）+ 原生 Rust Agent 全链路 L3 实测通过（8 设备/29 传感器/Haskell 分析/容器重建持久性/Agent 重启恢复/SQLite 在线备份恢复演练/可选 HTTPS 模板校验全部通过）；宿主机 systemd 安装与 7 天长期运行测试待项目所有者授权与安排 |
-| 6 | 扩展 | 未开始 | — | — |
+| 5 | 生产部署 | 已验收 | 2026-11-20 | ADR-0009 已批准；Docker Compose 非 root 三容器（Haskell/Bun/Nginx）+ 原生 Rust Agent 全链路 L3 实测通过（8 设备/29 传感器/Haskell 分析/容器重建持久性/Agent 重启恢复/SQLite 在线备份恢复演练/可选 HTTPS 模板校验全部通过）；Tag `v0.5.0-phase5` |
+| 6 | 扩展 | 进行中 | — | 低硬件开销分级调度、安全数据导出（CSV/JSON）、告警 Webhook 通知（含 SSRF 防护与密钥脱敏）、Haskell MAD/突变高级异常检测、Tauri 2 客户端脚手架、ADR-0010 草案与 L3 常驻启动后稳定性/安全/性能实测 |
 
 阶段定义见 [development/workflow.md](development/workflow.md)。
 
 ## ADR 状态
 
-见 [decisions/README.md](decisions/README.md)。ADR-0001 至 ADR-0008 均已 `accepted`；ADR-0009（局域网默认 HTTP + 可选 HTTPS 模板）已按所有者要求起草并验证，待所有者正式定稿为 `accepted`。
+见 [decisions/README.md](decisions/README.md)。ADR-0001 至 ADR-0009 均已 `accepted`；ADR-0010（多主机与带外硬件扩展）将在阶段 6 起草。
 
 ## 已知风险 / 待办
 
