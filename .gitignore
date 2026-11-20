@@ -1,0 +1,37 @@
+# Dependencies & build outputs
+node_modules/
+target/
+dist/
+build/
+dist-newstyle/
+.ghc.environment.*
+
+# Databases & runtime data
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+data/
+
+# Secrets & local env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+
+# Logs & temporary files
+*.log
+logs/
+tmp/
+.DS_Store
+Thumbs.db
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
