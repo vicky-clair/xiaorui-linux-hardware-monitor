@@ -31,6 +31,7 @@
 | GET | /api/v1/auth/me | 当前用户 | 2 |
 | GET/POST/PATCH/DELETE | /api/v1/users | 用户管理（管理员） | 2 |
 | GET | /api/v1/system/overview | 总览 | 2 |
+| POST | /api/v1/system/check | 手动触发全局硬件实时采集 + 聚合 + Haskell 健康评估（管理员，10s 冷却，写审计日志） | 6 |
 | GET | /api/v1/hosts | 主机列表（v1 仅单主机） | 2 |
 | GET | /api/v1/devices | 设备列表 | 2 |
 | GET | /api/v1/devices/:id | 设备详情 | 2 |

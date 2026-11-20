@@ -42,6 +42,7 @@ function buildElysiaApp(deps: {
   config: ApiConfig;
   authService: AuthService;
   authRepo: AuthRepository;
+  aggregationRepo: AggregationRepository;
   alertRepo: AlertRepository;
   healthService: HealthAnalysisService;
   notifier: AlertNotifier;
@@ -89,6 +90,7 @@ export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
     config,
     authService,
     authRepo,
+    aggregationRepo,
     alertRepo,
     healthService,
     notifier,

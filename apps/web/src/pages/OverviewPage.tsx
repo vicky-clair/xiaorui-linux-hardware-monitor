@@ -1,5 +1,12 @@
+// 系统总览页：展示主机信息、设备与传感器摘要、采集器状态、最近诊断日志，
+// 并支持管理员点击「立即全局健康检测」按需唤醒宿主机 Agent 实时采样并触发 Haskell 全局健康评估。
 import { useEffect, useState } from "react";
-import { api, ApiClientError, type OverviewResponse } from "../lib/api.ts";
+import {
+  api,
+  ApiClientError,
+  type GlobalCheckResult,
+  type OverviewResponse,
+} from "../lib/api.ts";
 import { formatLocalTime, formatUptime } from "../lib/format.ts";
 import {
   translateCollectorStatus,
@@ -10,12 +17,69 @@ import {
 import { CapabilityBadge } from "../components/StatusBadge.tsx";
 import { EmptyState, ErrorState, LoadingState } from "../components/States.tsx";
 
-export function OverviewView({ data }: { data: OverviewResponse }) {
+export function OverviewView({
+  data,
+  canGlobalCheck = false,
+  checking = false,
+  checkResult = null,
+  onRunGlobalCheck,
+}: {
+  data: OverviewResponse;
+  canGlobalCheck?: boolean;
+  checking?: boolean;
+  checkResult?: GlobalCheckResult | null;
+  onRunGlobalCheck?: () => void;
+}) {
   const { locale, t } = useI18n();
   const host = data.hosts[0];
+
+  const resultTone =
+    checkResult && (checkResult.severity_counts.critical > 0 || checkResult.degraded)
+      ? "banner-err"
+      : checkResult && checkResult.severity_counts.warning > 0
+        ? "banner-warn"
+        : "banner-info";
+
   return (
     <>
-      <div className="banner banner-info">{t("overview.notice")}</div>
+      <div className="panel" style={{ padding: "12px 16px" }}>
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            <div>{t("overview.notice")}</div>
+            <div style={{ marginTop: 4 }}>{t("overview.globalCheckHint")}</div>
+          </div>
+          {canGlobalCheck && onRunGlobalCheck && (
+            <button
+              type="button"
+              className="btn"
+              disabled={checking}
+              onClick={onRunGlobalCheck}
+            >
+              {checking ? t("overview.globalChecking") : t("overview.globalCheckBtn")}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {checkResult && (
+        <div className={`banner ${resultTone}`} role="status">
+          <strong>
+            {t("overview.checkDonePrefix")}
+            {formatLocalTime(checkResult.checked_at, locale)}):{" "}
+          </strong>
+          <span>
+            {checkResult.agent_collected
+              ? t("overview.checkAgentOk")
+              : `${t("overview.checkAgentSkip")}${checkResult.agent_note ? ` (${checkResult.agent_note})` : ""}`}
+            {" · "}
+            {t("overview.checkSummary")}
+            {t("sev.normal")} {checkResult.severity_counts.normal} /{" "}
+            {t("sev.warning")} {checkResult.severity_counts.warning} /{" "}
+            {t("sev.critical")} {checkResult.severity_counts.critical} /{" "}
+            {t("sev.unknown")} {checkResult.severity_counts.unknown}
+          </span>
+        </div>
+      )}
 
       <div className="card-grid">
         <div className="card">
@@ -137,11 +201,19 @@ export function OverviewView({ data }: { data: OverviewResponse }) {
   );
 }
 
-export function OverviewPage() {
+export function OverviewPage({
+  canGlobalCheck = false,
+  onCheckComplete,
+}: {
+  canGlobalCheck?: boolean;
+  onCheckComplete?: () => void;
+}) {
   const { t } = useI18n();
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<GlobalCheckResult | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -161,8 +233,38 @@ export function OverviewPage() {
 
   useEffect(load, []);
 
+  const handleGlobalCheck = () => {
+    setChecking(true);
+    setError(null);
+    api
+      .runGlobalCheck()
+      .then((res) => {
+        setCheckResult(res);
+        return api.overview().then((ov) => {
+          setData(ov);
+          onCheckComplete?.();
+        });
+      })
+      .catch((err) =>
+        setError(
+          err instanceof ApiClientError
+            ? { code: err.code, message: err.message }
+            : { message: String(err) },
+        ),
+      )
+      .finally(() => setChecking(false));
+  };
+
   if (loading) return <LoadingState message={t("overview.loading")} />;
   if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
   if (!data) return <EmptyState />;
-  return <OverviewView data={data} />;
+  return (
+    <OverviewView
+      data={data}
+      canGlobalCheck={canGlobalCheck}
+      checking={checking}
+      checkResult={checkResult}
+      onRunGlobalCheck={handleGlobalCheck}
+    />
+  );
 }

@@ -8,9 +8,12 @@ import { Elysia } from "elysia";
 import type { AuthService } from "../auth/service.ts";
 import type { ApiConfig } from "../config/env.ts";
 import { errorResponse, okResponse } from "../middleware/envelope.ts";
+import { triggerAgentScan } from "../ipc/agentControl.ts";
+import type { AggregationRepository } from "../repositories/aggregationRepo.ts";
 import type { AlertRepository } from "../repositories/alertRepo.ts";
 import type { AuthRepository } from "../repositories/authRepo.ts";
 import type { TelemetryRepository } from "../repositories/telemetryRepo.ts";
+import type { HealthAnalysisService } from "../services/healthClient.ts";
 import type { AlertNotifier } from "../services/notifier.ts";
 
 const MAX_EXPORT_ROWS = 10_000;
@@ -42,12 +45,94 @@ export function createExtensionRoutes(deps: {
   authService: AuthService;
   authRepo: AuthRepository;
   telemetryRepo: TelemetryRepository;
+  aggregationRepo: AggregationRepository;
   alertRepo: AlertRepository;
+  healthService: HealthAnalysisService;
   notifier: AlertNotifier;
 }) {
-  const { config, authService, authRepo, telemetryRepo, alertRepo, notifier } = deps;
+  const {
+    config,
+    authService,
+    authRepo,
+    telemetryRepo,
+    aggregationRepo,
+    alertRepo,
+    healthService,
+    notifier,
+  } = deps;
+  let lastManualCheckMs = 0;
 
   return new Elysia({ prefix: "/api/v1" })
+    // ---- 手动触发全局硬件采集 + 聚合 + Haskell 健康分析（管理员，10 秒冷却） ----
+    .post("/system/check", async ({ request, set }) => {
+      const session = authService.authenticateRequest(request);
+      if (!session) {
+        set.status = 401;
+        return errorResponse("UNAUTHORIZED", "Authentication required");
+      }
+      if (session.role !== "admin") {
+        set.status = 403;
+        return errorResponse("FORBIDDEN", "Administrator role required");
+      }
+
+      const nowMs = Date.now();
+      if (nowMs - lastManualCheckMs < 10_000) {
+        set.status = 429;
+        return errorResponse(
+          "RATE_LIMITED",
+          "Please wait at least 10 seconds between manual global health checks",
+        );
+      }
+      lastManualCheckMs = nowMs;
+
+      // 1. 唤醒宿主机 Rust Agent 执行一次完整实时硬件采集与 SMART/RAPL 读取
+      const agentScan = await triggerAgentScan(config.agentCtrlSocketPath, 15_000);
+
+      // 2. 立即更新 1 分钟/1 小时聚合桶
+      const afterMs = Date.now();
+      const toNow = new Date(afterMs + 1000).toISOString();
+      try {
+        aggregationRepo.aggregate1m(new Date(afterMs - 5 * 60_000).toISOString(), toNow);
+        aggregationRepo.aggregate1h(new Date(afterMs - 2 * 3_600_000).toISOString(), toNow);
+      } catch {
+        // aggregation errors are non-fatal for analysis
+      }
+
+      // 3. 调用 Haskell 健康引擎完成全局评估与告警状态推进
+      const outcome = await healthService.runCycle();
+      const latest = alertRepo.listLatestAnalysis(100);
+      const severityCounts = { normal: 0, warning: 0, critical: 0, unknown: 0 };
+      for (const r of latest) {
+        if (r.severity in severityCounts) {
+          severityCounts[r.severity as keyof typeof severityCounts] += 1;
+        }
+      }
+
+      authRepo.writeAuditLog({
+        actorUserId: session.user_id,
+        actorUsername: session.username,
+        action: "MANUAL_GLOBAL_HEALTH_CHECK",
+        targetType: "system",
+        details: {
+          agent_collected: agentScan.triggered,
+          agent_note: agentScan.reason,
+          analyzed_devices: outcome.analyzed_devices,
+          degraded: outcome.degraded,
+        },
+        ipAddress: clientIp(request),
+      });
+
+      return okResponse({
+        agent_collected: agentScan.triggered,
+        agent_note: agentScan.reason,
+        analysis_ok: outcome.ok,
+        degraded: outcome.degraded,
+        analyzed_devices: outcome.analyzed_devices,
+        transitions_count: outcome.transitions_count,
+        severity_counts: severityCounts,
+        checked_at: new Date().toISOString(),
+      });
+    })
     // ---- Phase 6: Safe Data Export (CSV / JSON) ----
     .get("/export/readings", ({ request, query, set }) => {
       if (!authService.authenticateRequest(request)) {

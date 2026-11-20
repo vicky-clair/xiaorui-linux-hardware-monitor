@@ -232,4 +232,38 @@ describe("Phase 6 extensions: safe CSV/JSON export & signed webhook notification
       receiver.stop(true);
     }
   });
+
+  test("POST /api/v1/system/check enforces admin auth, cooldown, and returns global summary", async () => {
+    const runtime = createAppRuntime({ dbPath: ":memory:" });
+    try {
+      const unauth = await runtime.app.handle(
+        new Request("http://localhost/api/v1/system/check", { method: "POST" }),
+      );
+      expect(unauth.status).toBe(401);
+
+      const cookie = await bootstrapAndLogin(runtime);
+      const first = await runtime.app.handle(
+        new Request("http://localhost/api/v1/system/check", {
+          method: "POST",
+          headers: { cookie },
+        }),
+      );
+      expect(first.status).toBe(200);
+      const body = await first.json();
+      expect(body.success).toBe(true);
+      expect(typeof body.data.agent_collected).toBe("boolean");
+      expect(body.data.severity_counts).toBeDefined();
+
+      // Immediate second call within 10s cooldown must be rate-limited (429)
+      const second = await runtime.app.handle(
+        new Request("http://localhost/api/v1/system/check", {
+          method: "POST",
+          headers: { cookie },
+        }),
+      );
+      expect(second.status).toBe(429);
+    } finally {
+      runtime.close();
+    }
+  });
 });

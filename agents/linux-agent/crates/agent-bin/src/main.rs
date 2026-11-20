@@ -24,17 +24,33 @@ struct CliOptions {
     once: bool,
     sysfs_root: String,
     socket_path: String,
+    ctrl_socket_path: String,
     send_once_socket: Option<String>,
     interval_secs: u64,
     discovery_interval_secs: u64,
 }
 
+fn default_ctrl_socket(ipc_socket: &str) -> String {
+    if let Ok(v) = env::var("LHM_AGENT_CTRL_SOCKET")
+        && !v.trim().is_empty()
+    {
+        return v;
+    }
+    let parent = std::path::Path::new(ipc_socket)
+        .parent()
+        .and_then(|p| p.to_str())
+        .unwrap_or("/run/linux-hardware-monitor");
+    format!("{parent}/agent-ctrl.sock")
+}
+
 fn parse_args() -> CliOptions {
+    let socket_path = env::var("LHM_IPC_SOCKET")
+        .unwrap_or_else(|_| "/run/linux-hardware-monitor/ipc.sock".into());
     let mut opts = CliOptions {
         once: false,
         sysfs_root: env::var("LHM_SYSFS_ROOT").unwrap_or_else(|_| "/".into()),
-        socket_path: env::var("LHM_IPC_SOCKET")
-            .unwrap_or_else(|_| "/run/linux-hardware-monitor/ipc.sock".into()),
+        ctrl_socket_path: default_ctrl_socket(&socket_path),
+        socket_path,
         send_once_socket: None,
         interval_secs: env::var("LHM_AGENT_INTERVAL_SECONDS")
             .ok()
@@ -57,7 +73,13 @@ fn parse_args() -> CliOptions {
             }
             "--socket" => {
                 if let Some(v) = args.next() {
+                    opts.ctrl_socket_path = default_ctrl_socket(&v);
                     opts.socket_path = v;
+                }
+            }
+            "--ctrl-socket" => {
+                if let Some(v) = args.next() {
+                    opts.ctrl_socket_path = v;
                 }
             }
             "--send-once" => {
@@ -181,12 +203,18 @@ async fn main() {
         return;
     }
 
-    // Low-overhead daemon loop: cached discovery (default 60s), per-task intervals, bounded IPC buffer
+    // Low-overhead daemon loop: cached discovery, per-task intervals, bounded IPC buffer,
+    // plus zero-polling Unix control socket (`agent-ctrl.sock`) for on-demand manual "SCAN".
     #[cfg(unix)]
     let mut attempt: u32 = 0;
     #[cfg(unix)]
     let mut sigterm =
         tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).ok();
+    #[cfg(unix)]
+    let ctrl_listener = bind_control_socket(&opts.ctrl_socket_path);
+    #[cfg(unix)]
+    let mut last_manual_scan: Option<std::time::Instant> = None;
+
     let mut tick = tokio::time::interval(Duration::from_secs(opts.interval_secs));
     let discovery_interval = Duration::from_secs(opts.discovery_interval_secs);
     loop {
@@ -201,6 +229,17 @@ async fn main() {
         #[cfg(not(unix))]
         let terminate_fut = std::future::pending::<()>();
 
+        #[cfg(unix)]
+        let ctrl_accept_fut = async {
+            if let Some(ref listener) = ctrl_listener {
+                listener.accept().await.ok()
+            } else {
+                std::future::pending().await
+            }
+        };
+        #[cfg(not(unix))]
+        let ctrl_accept_fut = std::future::pending::<Option<()>>();
+
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
                 info!(component = "lhm-agent", "Received SIGINT shutdown signal");
@@ -209,6 +248,47 @@ async fn main() {
             _ = terminate_fut => {
                 info!(component = "lhm-agent", "Received SIGTERM shutdown signal");
                 break;
+            }
+            accepted = ctrl_accept_fut => {
+                #[cfg(unix)]
+                if let Some((mut stream, _)) = accepted {
+                    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                    let mut buf = [0u8; 32];
+                    let n = tokio::time::timeout(Duration::from_secs(2), stream.read(&mut buf))
+                        .await
+                        .ok()
+                        .and_then(|r| r.ok())
+                        .unwrap_or(0);
+                    let cmd = std::str::from_utf8(&buf[..n]).unwrap_or("").trim();
+                    if cmd != "SCAN" {
+                        let _ = stream.write_all(b"ERR INVALID_COMMAND\n").await;
+                        continue;
+                    }
+                    // 防刷保护：两次手动扫描至少间隔 5 秒
+                    if let Some(prev) = last_manual_scan
+                        && prev.elapsed() < Duration::from_secs(5)
+                    {
+                        let _ = stream.write_all(b"ERR RATE_LIMITED\n").await;
+                        continue;
+                    }
+                    last_manual_scan = Some(std::time::Instant::now());
+                    info!(component = "lhm-agent", "Received on-demand manual SCAN request via control socket");
+                    let snap = runner.run_once(Duration::from_secs(5)).await;
+                    enqueue_snapshot(&mut ipc, &snap, true);
+                    match ipc.connect_and_flush_unix(&host).await {
+                        Ok(flushed) => {
+                            attempt = 0;
+                            info!(component = "lhm-agent", flushed, "Completed manual on-demand global scan");
+                            let _ = stream.write_all(b"OK\n").await;
+                        }
+                        Err(e) => {
+                            warn!(component = "lhm-agent", error = %e, "Manual scan IPC flush failed");
+                            let _ = stream.write_all(b"ERR IPC_FLUSH_FAILED\n").await;
+                        }
+                    }
+                }
+                #[cfg(not(unix))]
+                let _ = accepted;
             }
             _ = tick.tick() => {
                 let tick_snap = runner.run_tick(Duration::from_secs(5), discovery_interval).await;
@@ -241,7 +321,27 @@ async fn main() {
             }
         }
     }
+    #[cfg(unix)]
+    let _ = std::fs::remove_file(&opts.ctrl_socket_path);
     runner.shutdown().await;
+}
+
+/// 绑定按需手动检测控制 Socket（0660，仅接受固定字面量 `SCAN`，零轮询开销）。
+#[cfg(unix)]
+fn bind_control_socket(path: &str) -> Option<tokio::net::UnixListener> {
+    use std::os::unix::fs::PermissionsExt;
+    let _ = std::fs::remove_file(path);
+    match tokio::net::UnixListener::bind(path) {
+        Ok(listener) => {
+            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o660));
+            info!(component = "lhm-agent", ctrl_socket = %path, "Listening for on-demand SCAN requests");
+            Some(listener)
+        }
+        Err(e) => {
+            warn!(component = "lhm-agent", ctrl_socket = %path, error = %e, "Failed to bind control socket; manual trigger unavailable");
+            None
+        }
+    }
 }
 
 fn enqueue_snapshot(

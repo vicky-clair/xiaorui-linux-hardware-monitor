@@ -124,10 +124,13 @@ describe("Core page rendering", () => {
             devices_with_permission_denied: 3,
           },
         }}
+        canGlobalCheck={true}
+        onRunGlobalCheck={() => {}}
       />,
     );
     expect(overviewHtml).toContain("debian-node");
     expect(overviewHtml).toContain("绝不在前端推断健康状态");
+    expect(overviewHtml).toContain("立即全局健康检测");
 
     const analysisHtml = renderToStaticMarkup(
       <AnalysisView

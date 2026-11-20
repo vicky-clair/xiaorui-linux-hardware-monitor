@@ -259,6 +259,22 @@ export interface AlertRuleRow {
   enabled: boolean;
 }
 
+export interface GlobalCheckResult {
+  agent_collected: boolean;
+  agent_note: string | null;
+  analysis_ok: boolean;
+  degraded: boolean;
+  analyzed_devices: number;
+  transitions_count: number;
+  severity_counts: {
+    normal: number;
+    warning: number;
+    critical: number;
+    unknown: number;
+  };
+  checked_at: string;
+}
+
 export interface ConfigResponse {
   settings: Record<string, unknown>;
   defaults: {
@@ -305,6 +321,8 @@ export const api = {
   logout: () =>
     request<{ logged_out: boolean }>("/api/v1/auth/logout", { method: "POST" }),
   overview: () => request<OverviewResponse>("/api/v1/system/overview"),
+  runGlobalCheck: () =>
+    request<GlobalCheckResult>("/api/v1/system/check", { method: "POST" }),
   hosts: () => request<{ hosts: HostRow[] }>("/api/v1/hosts"),
   devices: (deviceType?: string) =>
     request<{ devices: DeviceRow[] }>(

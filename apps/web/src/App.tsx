@@ -247,7 +247,12 @@ export function App() {
         <main className="content">
           <GlobalAlertBanner alerts={alerts} analysis={analysis} onNavigate={setPage} />
 
-          {page === "overview" && <OverviewPage />}
+          {page === "overview" && (
+            <OverviewPage
+              canGlobalCheck={user.role === "admin"}
+              onCheckComplete={refreshGlobalStatus}
+            />
+          )}
           {page === "cpu" && (
             <SensorCategoryPage
               categoryKey="cpu"
