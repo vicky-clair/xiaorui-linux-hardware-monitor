@@ -94,15 +94,14 @@ docker compose --env-file deploy/docker/.env -f deploy/docker/docker-compose.yml
 
 ## 5. 阶段 5 L3 实测数据与长期运行建议
 
-**2026-11-20 L3 实体机实测快照（Debian 13.6 / Intel Celeron N5095A，隔离栈 `COMPOSE_PROJECT_NAME=lhm-test`，端口 `18080`）**：
-- 原生 `lhm-agent`（release，3s 周期）：`RSS 4.8 MiB`（目标 `< 150 MB`），`CPU 0.2%`（目标 `< 2%`）；`SIGTERM` 重启后自动重连并恢复上报。
-- 非 root 三容器稳态内存占用：
-  - `health-engine`（`uid=10001`）：`2.57 MiB / 256 MiB`，`CPU 0.00%`
-  - `api`（`uid=1000`）：`41.12 MiB / 512 MiB`，`CPU 0.31%`
-  - `web`（`uid=101`）：`4.67 MiB / 128 MiB`，`CPU 0.00%`
-- 全链路实机验证：8 台真实设备、29 个传感器经 Unix Socket 入库；Haskell 引擎容器分析全部 8 台设备（`ok=true, degraded=false`）。
-- 容器重建持久性：`api` 容器 `--force-recreate` 重建后设备、分析结果与同一会话 Cookie 全部保留。
-- SQLite 在线备份与恢复演练：`VACUUM INTO` 在线快照 + SHA-256 校验 + 恢复至独立文件通过 `PRAGMA integrity_check == ok`（23 张表、全部数据完整）。
+**2026-11-20 阶段 6 低硬件开销优化后 L3 实体机常驻启动实测（`COMPOSE_PROJECT_NAME=lhm`，`http://192.168.9.165:18080`）**：
+- 原生 `lhm-agent`（release，5s 分级调度 + 60s 发现缓存 + `nice 10` / `ionice -c 3`）：`RSS 4.75 MiB`、`CPU 0.0%`（35 秒内 8 次上报中仅 1 次全量发现刷新，其余 7 次为轻量纯传感器上报，无重复 `smartctl` 刷屏）。
+- 非 root 三容器稳态占用与硬上限：
+  - `lhm-health-engine-1`（`uid=10001`，`read_only: true`，上限 `0.50 CPU / 256 MiB`）：`1.73 MiB`、`CPU 0.00%`
+  - `lhm-api-1`（`uid=1000`，上限 `0.75 CPU / 512 MiB`）：`37.62 MiB`、`CPU 0.03%`
+  - `lhm-web-1`（`uid=101`，上限 `0.25 CPU / 128 MiB`）：`4.64 MiB`、`CPU 0.00%`
+- 全系统 4 进程总计占用约 **`0.03% CPU` / `48.7 MiB RAM`**。
+- 启动后安全复验：未登录访问 `/api/v1/{devices,config,export/report,notifications,alerts,analysis}` 均返回 `HTTP 401`；非法 Origin 的 WebSocket 连接返回 `HTTP 403`；Webhook SSRF 元数据地址被拦截返回 `HTTP 400`。
 - **尚未验证项**：7 天连续长期运行稳定性测试（目标见 [workflow.md](../development/workflow.md) §6）与宿主机 `systemd` 安装（需项目所有者手动 `sudo` 授权执行）。
 
 长期运行验收建议：
