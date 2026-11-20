@@ -448,6 +448,8 @@ impl Collector for SmartCollector {
                     }
                     res.readings.extend(readings);
                     res.diagnostics.extend(diags);
+                    res.sensor_capability_updates
+                        .push((sensor_id(&disk.device_id, "temperature", "smart"), cap));
                     if let Some(st) = self.state.write().expect("lock").status.as_mut() {
                         st.last_run_at = Some(utc_now_rfc3339());
                         st.capability_status = cap;

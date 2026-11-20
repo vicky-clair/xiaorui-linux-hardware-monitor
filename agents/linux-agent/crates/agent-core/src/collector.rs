@@ -34,6 +34,8 @@ pub struct CollectResult {
     pub readings: Vec<SensorReading>,
     pub smart_reports: Vec<SmartReport>,
     pub diagnostics: Vec<Diagnostic>,
+    /// Optional runtime capability updates discovered during collection (e.g. SMART permission_denied).
+    pub sensor_capability_updates: Vec<(String, CapabilityStatus)>,
 }
 
 #[derive(Clone)]

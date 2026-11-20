@@ -139,10 +139,17 @@ impl AgentRunner {
                     readings: r,
                     smart_reports: sr,
                     diagnostics: d,
+                    sensor_capability_updates: cap_updates,
                 })) => {
                     readings.extend(r);
                     smart_reports.extend(sr);
                     diagnostics.extend(d);
+                    for (sid, new_cap) in cap_updates {
+                        if let Some(sensor) = sensors.iter_mut().find(|s| s.sensor_id == sid) {
+                            sensor.capability_status = new_cap;
+                            sensor.enabled = new_cap == CapabilityStatus::Supported;
+                        }
+                    }
                     statuses.insert(name, collector.health_check());
                 }
                 Ok(Err(_elapsed)) => {
@@ -172,9 +179,17 @@ impl AgentRunner {
             }
         }
 
-        // Also gather any collector-internal diagnostics
+        // Gather any extra collector-internal diagnostics, deduplicating by diagnostic_id.
+        let mut seen_diag_ids: std::collections::BTreeSet<String> = diagnostics
+            .iter()
+            .map(|d| d.diagnostic_id.clone())
+            .collect();
         for collector in &self.collectors {
-            diagnostics.extend(collector.diagnostics());
+            for diag in collector.diagnostics() {
+                if seen_diag_ids.insert(diag.diagnostic_id.clone()) {
+                    diagnostics.push(diag);
+                }
+            }
         }
 
         let coverage = build_coverage_report(&self.ctx.host_id, &devices, &sensors, &readings);
@@ -350,6 +365,7 @@ mod tests {
                     }],
                     smart_reports: Vec::new(),
                     diagnostics: Vec::new(),
+                    sensor_capability_updates: Vec::new(),
                 }
             })
         }
