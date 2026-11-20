@@ -2,8 +2,8 @@
 
 > 本文件记录当前开发阶段与验收情况。只有项目所有者可以确认阶段验收；AI 代理只能提交验收证据并提出申请。
 
-- **当前阶段**：阶段 4 — Haskell 健康分析与告警
-- **阶段状态**：开发与自检完成，等待项目所有者验收（L0 全量 CI + 真实编译版 Haskell HTTP 服务 ↔ Bun API 端到端联调 + L3 Rust/Bun/Web 复验均已通过）
+- **当前阶段**：阶段 5 — 生产部署
+- **阶段状态**：进行中（阶段 4 已验收并推送 GitHub，开始实施阶段 5 部署配置、ADR-0009 与 L3 隔离容器化验证）
 - **最后更新**：2026-11-20
 
 ## 阶段验收记录
@@ -14,17 +14,18 @@
 | 1 | Rust Agent | 已验收 | 2026-11-20 | ADR-0008 已批准；L0 全量 CI 通过；L3 15 项测试与非 root 实机发现/采集验证通过；Tag `v0.1.0-phase1` |
 | 2 | Bun API | 已验收 | 2026-11-20 | L0 全量 CI（含 API 5 套件 / 79 断言）+ SQLite 写入基准通过；L3 非 root 容器 + 原生 Rust Agent 真实 Unix Socket 端到端入库与认证查询通过；Tag `v0.2.0-phase2` |
 | 3 | React Web | 已验收 | 2026-11-20 | 全部 14 个阶段 3 视图实现完成；L0 全量 CI（Web 5 套件 / 33 断言 + Vite 生产构建）与 L3 非 root 容器验证通过；Tag `v0.3.0-phase3` |
-| 4 | Haskell 健康分析与告警 | 待验收 | — | 共享协议 v1.1（`analyze.schema.json`）三端黄金样例通过；Haskell 10 模块纯计算 + 无状态 HTTP 服务通过单测并与 Bun API 实机联调通过；Bun API 告警生命周期/去重/降级 + Web 告警中心与健康分析页通过 L0/L3 验证 |
-| 5 | 生产部署 | 未开始 | — | 阶段 5 前需提出并批准 ADR-0009（局域网 HTTPS 证书方案） |
+| 4 | Haskell 健康分析与告警 | 已验收 | 2026-11-20 | 共享协议 v1.1（`analyze.schema.json`）三端黄金样例通过；Haskell 10 模块纯计算 + 无状态 HTTP 服务通过单测并与 Bun API 实机联调通过；Bun API 告警生命周期/去重/降级 + Web 告警中心与健康分析页通过 L0/L3 验证；Tag `v0.4.0-phase4` |
+| 5 | 生产部署 | 进行中 | — | 按项目所有者指示：局域网默认直连 HTTP，Nginx HTTPS 反向代理配置作为可选能力准备就绪但不默认启用；正在推进 ADR-0009、Docker Compose、systemd 模板、备份恢复演练与 L3 全链路容器验证 |
 | 6 | 扩展 | 未开始 | — | — |
 
 阶段定义见 [development/workflow.md](development/workflow.md)。
 
 ## ADR 状态
 
-见 [decisions/README.md](decisions/README.md)。ADR-0001 至 ADR-0008 均已 `accepted`；进入阶段 5 前需起草并批准 ADR-0009（局域网 HTTPS 证书）。
+见 [decisions/README.md](decisions/README.md)。ADR-0001 至 ADR-0008 均已 `accepted`；ADR-0009（局域网部署与可选 HTTPS 方案）按项目所有者明确需求起草中。
 
 ## 已知风险 / 待办
 
-- L3 实体机（`192.168.9.165`）未原生安装 GHC/Cabal，Haskell 引擎在 Linux 侧的镜像构建与容器化运行将在阶段 5 Docker Compose 中验证。
-- 等待项目所有者确认阶段 4 验收后，起草 ADR-0009 并进入阶段 5（生产部署：systemd、Docker Compose、Nginx、HTTPS、备份与恢复演练）。
+- L3 实体机（`192.168.9.165`）同时承载其他局域网服务（80/443/8080/9000 等端口已占用），本项目默认使用高位隔离端口（如 `18080`），不得修改宿主机既有 Nginx、systemd 或其他容器。
+- 宿主机 `systemd` 服务安装与系统用户/权限配置涉及 `sudo`，仅准备加固模板与安装脚本，待项目所有者显式授权后再决定是否安装到宿主机。
+- 长期运行测试（7 天）无法在单次任务中完成，须如实标注为待执行。
