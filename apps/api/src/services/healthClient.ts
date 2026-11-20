@@ -12,6 +12,7 @@ import type { ApiConfig } from "../config/env.ts";
 import type { AlertRepository } from "../repositories/alertRepo.ts";
 import type { TelemetryRepository } from "../repositories/telemetryRepo.ts";
 import type { RealtimeHub } from "../websocket/hub.ts";
+import type { AlertNotifier } from "./notifier.ts";
 
 export interface AnalysisRunOutcome {
   ok: boolean;
@@ -33,6 +34,7 @@ export class HealthAnalysisService {
     private readonly telemetryRepo: TelemetryRepository,
     private readonly alertRepo: AlertRepository,
     private readonly hub: RealtimeHub,
+    private readonly notifier?: AlertNotifier,
   ) {}
 
   async runCycle(): Promise<AnalysisRunOutcome> {
@@ -160,6 +162,9 @@ export class HealthAnalysisService {
         this.hub.broadcast("alert", tr as unknown as Record<string, unknown>, {
           deviceId: tr.device_id,
         });
+      }
+      if (this.notifier && response.alert_transitions.length > 0) {
+        void this.notifier.dispatchTransitions(response.alert_transitions);
       }
 
       return {

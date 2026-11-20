@@ -376,4 +376,42 @@ export const api = {
       `/api/v1/alert-rules/${encodeURIComponent(ruleId)}`,
       { method: "DELETE" },
     ),
+  notifications: () =>
+    request<{ webhook_enabled: boolean; webhook_url: string; has_secret: boolean }>(
+      "/api/v1/notifications",
+    ),
+  updateNotifications: (patch: {
+    webhook_enabled?: boolean;
+    webhook_url?: string;
+    webhook_secret?: string;
+  }) =>
+    request<{ webhook_enabled: boolean; webhook_url: string; has_secret: boolean }>(
+      "/api/v1/notifications",
+      {
+        method: "PUT",
+        body: JSON.stringify(patch),
+      },
+    ),
+  testNotification: () =>
+    request<{ delivered: boolean; status: number | null; error: string | null }>(
+      "/api/v1/notifications/test",
+      { method: "POST" },
+    ),
+  exportReadingsUrl: (params: {
+    sensorId: string;
+    from?: string;
+    to?: string;
+    granularity: "raw" | "1m" | "1h";
+    format: "csv" | "json";
+  }) => {
+    const qs = new URLSearchParams({
+      sensor_id: params.sensorId,
+      granularity: params.granularity,
+      format: params.format,
+    });
+    if (params.from) qs.set("from", params.from);
+    if (params.to) qs.set("to", params.to);
+    return `/api/v1/export/readings?${qs.toString()}`;
+  },
+  exportReportUrl: () => "/api/v1/export/report",
 };

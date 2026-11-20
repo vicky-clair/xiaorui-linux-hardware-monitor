@@ -45,9 +45,14 @@
 | PUT | /api/v1/config | 更新配置（管理员，写审计日志） | 2 |
 | GET | /api/v1/stream | WebSocket | 2 |
 | GET | /api/v1/analysis | 健康分析结果 | 4 |
+| POST | /api/v1/analysis/run | 触发一次健康分析（管理员） | 4 |
 | GET | /api/v1/alerts | 告警列表 | 4 |
 | POST | /api/v1/alerts/:id/ack | 确认告警 | 4 |
 | GET/POST/PATCH/DELETE | /api/v1/alert-rules | 告警规则管理 | 4 |
+| GET | /api/v1/export/readings | 安全导出单传感器采样（CSV/JSON，上限 10,000 行，CSV 防公式注入） | 6 |
+| GET | /api/v1/export/report | 导出脱敏健康与诊断快照报告（JSON，不含用户凭据与敏感配置） | 6 |
+| GET/PUT | /api/v1/notifications | 告警 Webhook 通知配置（写操作仅管理员，含 SSRF 校验与密钥脱敏） | 6 |
+| POST | /api/v1/notifications/test | 发送签名测试 Webhook（管理员，写审计日志） | 6 |
 
 ## 4. WebSocket
 

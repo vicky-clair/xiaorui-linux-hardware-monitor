@@ -108,21 +108,56 @@ export function TemperatureHistoryPage() {
     );
   };
 
+  const { from, to, granularity } = resolveTimeRange(range);
+  const primarySensorId = selectedIds[0] ?? null;
+
   return (
     <div className="panel">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>温度历史曲线</h2>
-        <select
-          aria-label="时间范围"
-          value={range}
-          onChange={(e) => setRange(e.target.value as TimeRangeKey)}
-        >
-          {RANGE_OPTIONS.map((o) => (
-            <option key={o.key} value={o.key}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <div className="row">
+          {primarySensorId && (
+            <>
+              <a
+                className="btn btn-secondary"
+                href={api.exportReadingsUrl({
+                  sensorId: primarySensorId,
+                  from,
+                  to,
+                  granularity,
+                  format: "csv",
+                })}
+                download
+              >
+                导出 CSV
+              </a>
+              <a
+                className="btn btn-secondary"
+                href={api.exportReadingsUrl({
+                  sensorId: primarySensorId,
+                  from,
+                  to,
+                  granularity,
+                  format: "json",
+                })}
+                download
+              >
+                导出 JSON
+              </a>
+            </>
+          )}
+          <select
+            aria-label="时间范围"
+            value={range}
+            onChange={(e) => setRange(e.target.value as TimeRangeKey)}
+          >
+            {RANGE_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="row" style={{ marginBottom: 12 }}>

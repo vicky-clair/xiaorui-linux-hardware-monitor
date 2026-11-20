@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Linux Hardware Monitor",
+  "version": "0.1.0",
+  "identifier": "io.github.vicky-clair.linux-hardware-monitor",
+  "build": {
+    "beforeDevCommand": "bun --cwd ../web dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "bun --cwd ../web build",
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Linux Hardware Monitor",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http: https: ws: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
+    }
+  }
+}

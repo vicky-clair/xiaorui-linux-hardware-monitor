@@ -21,10 +21,19 @@ fi
 
 mkdir -p "$(dirname "${SOCKET}")"
 
+# Yield CPU & disk I/O priority to minimize host performance impact
+LOW_PRIO_PREFIX=()
+if command -v ionice >/dev/null 2>&1; then
+  LOW_PRIO_PREFIX+=(ionice -c 3)
+fi
+if command -v nice >/dev/null 2>&1; then
+  LOW_PRIO_PREFIX+=(nice -n 10)
+fi
+
 if [[ "${1:-}" == "--send-once" ]]; then
-  exec "${BIN}" --send-once "${SOCKET}"
+  exec "${LOW_PRIO_PREFIX[@]}" "${BIN}" --send-once "${SOCKET}"
 elif [[ "${1:-}" == "--once" ]]; then
-  exec "${BIN}" --once
+  exec "${LOW_PRIO_PREFIX[@]}" "${BIN}" --once
 else
-  exec "${BIN}" --socket "${SOCKET}" "$@"
+  exec "${LOW_PRIO_PREFIX[@]}" "${BIN}" --socket "${SOCKET}" "$@"
 fi

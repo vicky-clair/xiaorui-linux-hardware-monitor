@@ -56,9 +56,11 @@ DeviceAllow=/dev/urandom r
 # DeviceAllow=/dev/sdb r
 # DeviceAllow=/dev/nvme0 r
 
-# Resource guardrails (target: <2% CPU, <150MB RAM)
+# Resource guardrails & low-impact host scheduling (target: <2% CPU, <150MB RAM)
+Nice=10
+IOSchedulingClass=idle
 MemoryMax=150M
-CPUQuota=20%
+CPUQuota=15%
 
 [Install]
 WantedBy=multi-user.target

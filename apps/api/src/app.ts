@@ -10,9 +10,11 @@ import { openDatabase, type DatabaseHandle } from "./repositories/db.ts";
 import { TelemetryRepository } from "./repositories/telemetryRepo.ts";
 import { createAlertRoutes } from "./routes/alerts.ts";
 import { createAuthRoutes } from "./routes/auth.ts";
+import { createExtensionRoutes } from "./routes/extensions.ts";
 import { healthRoute } from "./routes/health.ts";
 import { createTelemetryRoutes } from "./routes/telemetry.ts";
 import { HealthAnalysisService } from "./services/healthClient.ts";
+import { AlertNotifier } from "./services/notifier.ts";
 import { RealtimeHub } from "./websocket/hub.ts";
 
 export interface AppRuntime {
@@ -25,6 +27,7 @@ export interface AppRuntime {
   authRepo: AuthRepository;
   authService: AuthService;
   healthService: HealthAnalysisService;
+  notifier: AlertNotifier;
   ipcProcessor: IpcProcessor;
   hub: RealtimeHub;
   close: () => void;
@@ -36,6 +39,7 @@ function buildElysiaApp(deps: {
   authRepo: AuthRepository;
   alertRepo: AlertRepository;
   healthService: HealthAnalysisService;
+  notifier: AlertNotifier;
   telemetryRepo: TelemetryRepository;
   hub: RealtimeHub;
 }) {
@@ -53,7 +57,8 @@ function buildElysiaApp(deps: {
     .use(healthRoute)
     .use(createAuthRoutes(deps.authService, deps.authRepo))
     .use(createTelemetryRoutes(deps))
-    .use(createAlertRoutes(deps));
+    .use(createAlertRoutes(deps))
+    .use(createExtensionRoutes(deps));
 }
 
 export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
@@ -64,6 +69,7 @@ export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
   const alertRepo = new AlertRepository(dbHandle);
   const authRepo = new AuthRepository(dbHandle);
   const authService = new AuthService(authRepo, config);
+  const notifier = new AlertNotifier(authRepo);
   const hub = new RealtimeHub();
   const ipcProcessor = new IpcProcessor(telemetryRepo, hub);
   const healthService = new HealthAnalysisService(
@@ -71,6 +77,7 @@ export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
     telemetryRepo,
     alertRepo,
     hub,
+    notifier,
   );
 
   const app = buildElysiaApp({
@@ -79,6 +86,7 @@ export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
     authRepo,
     alertRepo,
     healthService,
+    notifier,
     telemetryRepo,
     hub,
   });
@@ -93,6 +101,7 @@ export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
     authRepo,
     authService,
     healthService,
+    notifier,
     ipcProcessor,
     hub,
     close: () => dbHandle.close(),

@@ -256,6 +256,20 @@ export class AuthRepository {
     return out;
   }
 
+  /** Server-internal lookup (may read sensitive keys; never expose raw result to clients). */
+  getInternalSetting(key: string): { value: unknown; isSensitive: boolean } | null {
+    const row = this.db
+      .select()
+      .from(appSettings)
+      .where(eq(appSettings.key, key))
+      .get();
+    if (!row) return null;
+    return {
+      value: JSON.parse(row.valueJson),
+      isSensitive: row.isSensitive === 1,
+    };
+  }
+
   upsertSettings(
     updates: Record<string, unknown>,
     actorUsername: string,

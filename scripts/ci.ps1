@@ -1,6 +1,7 @@
 #!/usr/bin/env pwsh
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $true
 
 Write-Host "==> [1/5] TypeScript typecheck"
 bun run typecheck

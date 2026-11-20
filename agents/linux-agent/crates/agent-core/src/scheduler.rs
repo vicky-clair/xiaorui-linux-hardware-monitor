@@ -5,9 +5,9 @@ use lhm_protocol::{
     CapabilityStatus, CollectorRunStatus, CollectorStatus, Device, Diagnostic, DiagnosticLevel,
     Sensor, SensorReading, SmartReport,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -21,12 +21,25 @@ pub struct Snapshot {
     pub coverage: CoverageReport,
 }
 
+/// Output of one low-overhead daemon tick (caches discovery & respects per-task intervals).
+#[derive(Debug, Clone)]
+pub struct TickSnapshot {
+    pub inventory_refreshed: bool,
+    pub snapshot: Snapshot,
+}
+
 /// Coordinates discovery and isolated task collection across all collectors.
 /// Guarantees that a timeout, error, or panic in any single collector NEVER crashes the agent.
 pub struct AgentRunner {
     collectors: Vec<Arc<dyn Collector>>,
     ctx: CollectorContext,
     last_wall_clock: Option<SystemTime>,
+    cached_devices: Vec<Device>,
+    cached_sensors: Vec<Sensor>,
+    cached_tasks: Vec<(Arc<dyn Collector>, CollectionTask)>,
+    last_discovery: Option<Instant>,
+    last_task_run: HashMap<String, Instant>,
+    task_min_interval: HashMap<String, Duration>,
 }
 
 impl AgentRunner {
@@ -35,6 +48,12 @@ impl AgentRunner {
             collectors,
             ctx,
             last_wall_clock: None,
+            cached_devices: Vec::new(),
+            cached_sensors: Vec::new(),
+            cached_tasks: Vec::new(),
+            last_discovery: None,
+            last_task_run: HashMap::new(),
+            task_min_interval: HashMap::new(),
         }
     }
 
@@ -201,6 +220,207 @@ impl AgentRunner {
             collector_statuses: statuses.into_values().collect(),
             diagnostics,
             coverage,
+        }
+    }
+
+    /// Low-overhead daemon tick: caches device/sensor discovery for `discovery_interval` (e.g. 60s),
+    /// only executes tasks whose individual `CollectionTask.interval` has elapsed, and backs off
+    /// permission-denied tasks (e.g. non-root smartctl) to 300s to minimize host CPU & I/O impact.
+    pub async fn run_tick(
+        &mut self,
+        discovery_timeout: Duration,
+        discovery_interval: Duration,
+    ) -> TickSnapshot {
+        let now = Instant::now();
+        let mut diagnostics = Vec::new();
+        let mut statuses: BTreeMap<String, CollectorStatus> = BTreeMap::new();
+        self.check_wall_clock(&mut diagnostics);
+
+        let need_discovery = self
+            .last_discovery
+            .map(|prev| now.duration_since(prev) >= discovery_interval)
+            .unwrap_or(true);
+
+        if need_discovery {
+            let mut devices = Vec::new();
+            let mut sensors = Vec::new();
+            let mut tasks: Vec<(Arc<dyn Collector>, CollectionTask)> = Vec::new();
+
+            for collector in &self.collectors {
+                let name = collector.name().to_owned();
+                let c = Arc::clone(collector);
+                let ctx = self.ctx.clone();
+                let handle = tokio::spawn(async move {
+                    tokio::time::timeout(discovery_timeout, c.discover(&ctx)).await
+                });
+                match handle.await {
+                    Ok(Ok(disc)) => {
+                        devices.extend(disc.devices);
+                        sensors.extend(disc.sensors);
+                        diagnostics.extend(disc.diagnostics);
+                        for task in disc.tasks {
+                            tasks.push((Arc::clone(collector), task));
+                        }
+                        statuses.insert(name, collector.health_check());
+                    }
+                    Ok(Err(_elapsed)) => {
+                        diagnostics.push(self.failure_diag(
+                            &name,
+                            "COLLECTOR_DISCOVERY_TIMEOUT",
+                            format!("Collector '{name}' discovery timed out"),
+                        ));
+                        statuses.insert(
+                            name.clone(),
+                            self.error_status(
+                                &name,
+                                "COLLECTOR_DISCOVERY_TIMEOUT",
+                                "discovery timed out",
+                            ),
+                        );
+                    }
+                    Err(join_err) => {
+                        let msg =
+                            format!("Collector '{name}' panicked during discovery: {join_err}");
+                        diagnostics.push(self.failure_diag(&name, "COLLECTOR_PANIC", msg.clone()));
+                        statuses.insert(
+                            name.clone(),
+                            self.error_status(&name, "COLLECTOR_PANIC", &msg),
+                        );
+                    }
+                }
+            }
+
+            self.cached_devices = devices;
+            self.cached_sensors = sensors;
+            self.cached_tasks = tasks;
+            self.last_discovery = Some(now);
+        }
+
+        let mut readings = Vec::new();
+        let mut smart_reports = Vec::new();
+        let mut sensor_caps_changed = false;
+
+        let due_tasks: Vec<(Arc<dyn Collector>, CollectionTask)> = self
+            .cached_tasks
+            .iter()
+            .filter(|(_, task)| {
+                let effective_interval = self
+                    .task_min_interval
+                    .get(&task.task_id)
+                    .copied()
+                    .unwrap_or(task.interval)
+                    .max(task.interval);
+                self.last_task_run
+                    .get(&task.task_id)
+                    .map(|prev| now.duration_since(*prev) >= effective_interval)
+                    .unwrap_or(true)
+            })
+            .map(|(c, t)| (Arc::clone(c), t.clone()))
+            .collect();
+
+        for (collector, task) in due_tasks {
+            self.last_task_run.insert(task.task_id.clone(), now);
+            let name = collector.name().to_owned();
+            let c = Arc::clone(&collector);
+            let ctx = self.ctx.clone();
+            let t = task.clone();
+            let handle =
+                tokio::spawn(
+                    async move { tokio::time::timeout(t.timeout, c.collect(&t, &ctx)).await },
+                );
+
+            match handle.await {
+                Ok(Ok(CollectResult {
+                    readings: r,
+                    smart_reports: sr,
+                    diagnostics: d,
+                    sensor_capability_updates: cap_updates,
+                })) => {
+                    readings.extend(r);
+                    smart_reports.extend(sr);
+                    diagnostics.extend(d);
+                    for (sid, new_cap) in cap_updates {
+                        if new_cap == CapabilityStatus::PermissionDenied {
+                            self.task_min_interval
+                                .insert(task.task_id.clone(), Duration::from_secs(300));
+                        }
+                        if let Some(sensor) =
+                            self.cached_sensors.iter_mut().find(|s| s.sensor_id == sid)
+                            && sensor.capability_status != new_cap
+                        {
+                            sensor.capability_status = new_cap;
+                            sensor.enabled = new_cap == CapabilityStatus::Supported;
+                            sensor_caps_changed = true;
+                        }
+                    }
+                    statuses.insert(name, collector.health_check());
+                }
+                Ok(Err(_elapsed)) => {
+                    let msg = format!(
+                        "Collector '{}' task '{}' timed out after {}ms",
+                        name,
+                        task.task_id,
+                        task.timeout.as_millis()
+                    );
+                    diagnostics.push(self.failure_diag(&name, "COLLECTOR_TIMEOUT", msg.clone()));
+                    statuses.insert(
+                        name.clone(),
+                        self.error_status(&name, "COLLECTOR_TIMEOUT", &msg),
+                    );
+                }
+                Err(join_err) => {
+                    let msg = format!(
+                        "Collector '{}' panicked on task '{}': {}",
+                        name, task.task_id, join_err
+                    );
+                    diagnostics.push(self.failure_diag(&name, "COLLECTOR_PANIC", msg.clone()));
+                    statuses.insert(
+                        name.clone(),
+                        self.error_status(&name, "COLLECTOR_PANIC", &msg),
+                    );
+                }
+            }
+        }
+
+        if need_discovery {
+            let mut seen_diag_ids: std::collections::BTreeSet<String> = diagnostics
+                .iter()
+                .map(|d| d.diagnostic_id.clone())
+                .collect();
+            for collector in &self.collectors {
+                for diag in collector.diagnostics() {
+                    if seen_diag_ids.insert(diag.diagnostic_id.clone()) {
+                        diagnostics.push(diag);
+                    }
+                }
+            }
+        }
+
+        let coverage = build_coverage_report(
+            &self.ctx.host_id,
+            &self.cached_devices,
+            &self.cached_sensors,
+            &readings,
+        );
+        TickSnapshot {
+            inventory_refreshed: need_discovery || sensor_caps_changed,
+            snapshot: Snapshot {
+                devices: if need_discovery || sensor_caps_changed {
+                    self.cached_devices.clone()
+                } else {
+                    Vec::new()
+                },
+                sensors: if need_discovery || sensor_caps_changed {
+                    self.cached_sensors.clone()
+                } else {
+                    Vec::new()
+                },
+                readings,
+                smart_reports,
+                collector_statuses: statuses.into_values().collect(),
+                diagnostics,
+                coverage,
+            },
         }
     }
 
@@ -408,5 +628,31 @@ mod tests {
                 .any(|d| d.error_code == "COLLECTOR_PANIC")
         );
         assert!(snap.coverage.devices[0].temperature_read_ok);
+    }
+
+    #[tokio::test]
+    async fn tiered_tick_caches_discovery_and_respects_task_intervals() {
+        let ctx = CollectorContext {
+            host_id: "host-test".into(),
+            sysfs: Arc::new(MockSysFs::new()),
+            cmd: Arc::new(MockCommandRunner::new()),
+        };
+        let mut runner = AgentRunner::new(vec![Arc::new(HealthyCollector)], ctx);
+
+        // First tick discovers devices/sensors and executes due 3s task
+        let t1 = runner
+            .run_tick(Duration::from_secs(2), Duration::from_secs(60))
+            .await;
+        assert!(t1.inventory_refreshed);
+        assert_eq!(t1.snapshot.devices.len(), 1);
+        assert_eq!(t1.snapshot.readings.len(), 1);
+
+        // Immediate second tick skips discovery (60s cache) and skips 3s task
+        let t2 = runner
+            .run_tick(Duration::from_secs(2), Duration::from_secs(60))
+            .await;
+        assert!(!t2.inventory_refreshed);
+        assert!(t2.snapshot.devices.is_empty());
+        assert!(t2.snapshot.readings.is_empty());
     }
 }

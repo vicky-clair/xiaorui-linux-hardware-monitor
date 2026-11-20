@@ -81,6 +81,11 @@ main = do
   assertBool "stable trend" (computeTrend (mkHistory [50, 50.1, 49.9, 50]) == TrendStable)
   assertBool "insufficient data trend" (computeTrend (mkHistory [50, 60]) == TrendInsufficientData)
   assertBool "spike anomaly detected" (not (null (detectAnomalies (mkHistory [40, 40.5, 39.8, 40.2, 40.1, 65.0]))))
+  -- Phase 6: robust MAD resists single outlier contamination in baseline and detects sudden step-change
+  let madAnoms = detectAnomalies (mkHistory [42, 42.2, 41.8, 95.0, 42.1, 41.9, 55.0])
+  assertBool "robust MAD catches spike despite prior outlier" (any (\a -> anomalyRecCode a == "ROBUST_MAD_SPIKE") madAnoms)
+  assertBool "sudden step-change detected" (any (\a -> anomalyRecCode a == "SUDDEN_STEP_CHANGE") madAnoms)
+  assertBool "gentle normal fluctuation produces zero anomalies" (null (detectAnomalies (mkHistory [45, 45.5, 46.0, 45.2, 45.8, 46.1])))
   let corrs = detectCorrelations [mkReading "temperature" 82 QualityValid, mkReading "fan_speed" 0 QualityValid] TrendRising
   assertBool "high temp + 0 RPM fan correlated" (any (\c -> corrRecCode c == "THERMAL_WITH_STOPPED_FAN") corrs)
 

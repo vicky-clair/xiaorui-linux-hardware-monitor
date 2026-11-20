@@ -21,4 +21,4 @@
 | 0007 | 告警职责划分 | [0007-alert-responsibility-boundary.md](0007-alert-responsibility-boundary.md) | 阶段 0 | accepted |
 | 0008 | Rust crate 划分 | [0008-rust-crate-layout.md](0008-rust-crate-layout.md) | 阶段 1 前 | accepted |
 | 0009 | 局域网部署与可选 HTTPS 方案 | [0009-lan-deployment-and-https.md](0009-lan-deployment-and-https.md) | 阶段 5 前 | accepted |
-| 0010 | 多主机传输 | 待起草 | 阶段 6 前 | 待提出 |
+| 0010 | 多主机传输与 IPMI/Redfish 扩展 | [0010-multi-host-and-oob-hardware.md](0010-multi-host-and-oob-hardware.md) | 阶段 6 前 | proposed |

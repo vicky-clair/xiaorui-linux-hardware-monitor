@@ -19,6 +19,7 @@ struct CliOptions {
     socket_path: String,
     send_once_socket: Option<String>,
     interval_secs: u64,
+    discovery_interval_secs: u64,
 }
 
 fn parse_args() -> CliOptions {
@@ -28,7 +29,14 @@ fn parse_args() -> CliOptions {
         socket_path: env::var("LHM_IPC_SOCKET")
             .unwrap_or_else(|_| "/run/linux-hardware-monitor/ipc.sock".into()),
         send_once_socket: None,
-        interval_secs: 5,
+        interval_secs: env::var("LHM_AGENT_INTERVAL_SECONDS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(5),
+        discovery_interval_secs: env::var("LHM_AGENT_DISCOVERY_INTERVAL_SECONDS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(60),
     };
 
     let mut args = env::args().skip(1);
@@ -53,6 +61,13 @@ fn parse_args() -> CliOptions {
                     && let Ok(secs) = v.parse::<u64>()
                 {
                     opts.interval_secs = secs.max(1);
+                }
+            }
+            "--discovery-interval" => {
+                if let Some(v) = args.next()
+                    && let Ok(secs) = v.parse::<u64>()
+                {
+                    opts.discovery_interval_secs = secs.max(10);
                 }
             }
             "--version" => {
@@ -135,7 +150,7 @@ async fn main() {
 
     if opts.send_once_socket.is_some() {
         let snap = runner.run_once(Duration::from_secs(5)).await;
-        enqueue_snapshot(&mut ipc, &snap);
+        enqueue_snapshot(&mut ipc, &snap, true);
         #[cfg(unix)]
         let ok = match ipc.connect_and_flush_unix(&host).await {
             Ok(n) => {
@@ -159,24 +174,46 @@ async fn main() {
         return;
     }
 
-    // Daemon loop with monotonic ticks, bounded IPC buffer, and graceful shutdown
+    // Low-overhead daemon loop: cached discovery (default 60s), per-task intervals, bounded IPC buffer
     #[cfg(unix)]
     let mut attempt: u32 = 0;
+    #[cfg(unix)]
+    let mut sigterm =
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).ok();
     let mut tick = tokio::time::interval(Duration::from_secs(opts.interval_secs));
+    let discovery_interval = Duration::from_secs(opts.discovery_interval_secs);
     loop {
+        #[cfg(unix)]
+        let terminate_fut = async {
+            if let Some(ref mut s) = sigterm {
+                s.recv().await;
+            } else {
+                std::future::pending::<()>().await;
+            }
+        };
+        #[cfg(not(unix))]
+        let terminate_fut = std::future::pending::<()>();
+
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
-                info!(component = "lhm-agent", "Received shutdown signal");
+                info!(component = "lhm-agent", "Received SIGINT shutdown signal");
+                break;
+            }
+            _ = terminate_fut => {
+                info!(component = "lhm-agent", "Received SIGTERM shutdown signal");
                 break;
             }
             _ = tick.tick() => {
-                let snap = runner.run_once(Duration::from_secs(5)).await;
-                enqueue_snapshot(&mut ipc, &snap);
+                let tick_snap = runner.run_tick(Duration::from_secs(5), discovery_interval).await;
+                enqueue_snapshot(&mut ipc, &tick_snap.snapshot, tick_snap.inventory_refreshed);
+                if ipc.buffered_len() == 0 {
+                    continue;
+                }
                 #[cfg(unix)]
                 match ipc.connect_and_flush_unix(&host).await {
                     Ok(n) => {
                         attempt = 0;
-                        info!(component = "lhm-agent", flushed = n, "Flushed IPC batch");
+                        info!(component = "lhm-agent", flushed = n, inventory_refreshed = tick_snap.inventory_refreshed, "Flushed IPC batch");
                     }
                     Err(e) => {
                         attempt = attempt.saturating_add(1);
@@ -200,11 +237,17 @@ async fn main() {
     runner.shutdown().await;
 }
 
-fn enqueue_snapshot(ipc: &mut IpcClient, snap: &agent_core::scheduler::Snapshot) {
-    ipc.enqueue(
-        IpcMessageType::Inventory,
-        json!({ "devices": snap.devices, "sensors": snap.sensors }),
-    );
+fn enqueue_snapshot(
+    ipc: &mut IpcClient,
+    snap: &agent_core::scheduler::Snapshot,
+    include_inventory: bool,
+) {
+    if include_inventory && (!snap.devices.is_empty() || !snap.sensors.is_empty()) {
+        ipc.enqueue(
+            IpcMessageType::Inventory,
+            json!({ "devices": snap.devices, "sensors": snap.sensors }),
+        );
+    }
     if !snap.readings.is_empty() {
         ipc.enqueue(
             IpcMessageType::SensorReadings,
