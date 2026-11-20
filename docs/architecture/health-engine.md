@@ -8,14 +8,13 @@
 
 ## 2. 与 Bun 的接口
 
-**待 ADR-0004 确定**，需要回答：
+已由 [ADR-0004](../decisions/0004-bun-haskell-interface.md)（accepted）确定：
 
-- 通信方式（stdin/stdout JSON Lines、HTTP、Unix Socket 等）。
-- 调用模式：常驻服务还是按批次调用。
-- 输入：Bun 每次提供多少历史窗口（原始采样 / 聚合数据），如何避免大批量传输。
-- 状态：告警状态机的状态由谁持久化（建议 Haskell 无状态，状态由 Bun 存储并随请求传入，结果中返回新状态）。
-- 超时与失败：Haskell 不可用时 Bun 的降级行为（不得把"未分析"展示为"健康"）。
-- 输入输出都必须使用 `packages/protocol` 中定义的 Schema。
+- 通信方式：常驻、完全无状态的内部 HTTP JSON 服务（`GET /health`、`POST /v1/analyze`），仅监听 Docker 内网或本地回环地址，不对外暴露。
+- 输入：Bun 从 SQLite 读取最新采样、规则所需历史窗口、规则与阈值配置及上次持久化的 `alert_states`，一次打包传入。
+- 输出：返回 `analysis_results`、`alert_transitions` 与更新后的 `alert_states`，由 Bun 单事务写回 SQLite（引擎重启零状态丢失）。
+- 超时与降级：默认超时 5 秒；Haskell 不可用或超时时，Bun 记录诊断并将分析状态标注为 `unknown`（`engine_unavailable`），绝不展示为健康。
+- 输入输出均使用 `packages/protocol` 中定义的 Schema。
 
 ## 3. 模块
 

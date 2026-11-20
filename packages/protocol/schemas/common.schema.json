@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/common.schema.json",
+  "title": "LHM Common Definitions",
+  "$defs": {
+    "CapabilityStatus": {
+      "type": "string",
+      "enum": ["supported", "unsupported", "permission_denied", "unavailable", "unknown"]
+    },
+    "ReadingQuality": {
+      "type": "string",
+      "enum": ["valid", "stale", "sensor_fault", "out_of_range", "missing"]
+    },
+    "DeviceStatus": {
+      "type": "string",
+      "enum": ["online", "standby", "offline", "unknown"]
+    },
+    "Severity": {
+      "type": "string",
+      "enum": ["normal", "warning", "critical", "unknown"]
+    },
+    "Unit": {
+      "type": "string",
+      "enum": [
+        "celsius",
+        "rpm",
+        "volt",
+        "watt",
+        "ampere",
+        "percent",
+        "hertz",
+        "byte",
+        "byte_per_second",
+        "second",
+        "count"
+      ]
+    },
+    "DeviceType": {
+      "type": "string",
+      "enum": [
+        "cpu",
+        "gpu",
+        "motherboard",
+        "memory",
+        "storage",
+        "fan",
+        "psu",
+        "network",
+        "system",
+        "other"
+      ]
+    },
+    "SensorType": {
+      "type": "string",
+      "enum": [
+        "temperature",
+        "fan_speed",
+        "voltage",
+        "power",
+        "current",
+        "utilization",
+        "frequency",
+        "memory",
+        "throughput",
+        "error_count",
+        "duration",
+        "other"
+      ]
+    },
+    "UtcTimestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "UintString": {
+      "type": "string",
+      "pattern": "^[0-9]+$"
+    },
+    "StableId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)+$"
+    },
+    "SchemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    }
+  }
+}

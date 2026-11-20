@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/diagnostic.schema.json",
+  "title": "Diagnostic",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "diagnostic_id",
+    "host_id",
+    "level",
+    "error_code",
+    "source",
+    "message",
+    "occurred_at"
+  ],
+  "properties": {
+    "diagnostic_id": { "type": "string", "minLength": 1 },
+    "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "device_id": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/StableId" },
+        { "type": "null" }
+      ]
+    },
+    "collector_name": { "type": ["string", "null"] },
+    "level": {
+      "type": "string",
+      "enum": ["info", "warn", "error"]
+    },
+    "error_code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$"
+    },
+    "source": { "type": "string", "minLength": 1 },
+    "message": { "type": "string", "minLength": 1 },
+    "remediation": { "type": ["string", "null"] },
+    "occurred_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+    "details": { "type": ["object", "null"] }
+  }
+}

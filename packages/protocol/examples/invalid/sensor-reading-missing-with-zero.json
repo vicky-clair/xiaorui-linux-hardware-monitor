@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "host_id": "debian-host-01",
+  "device_id": "gpu-pci-0000-01-00-0",
+  "sensor_id": "gpu-pci-0000-01-00-0-power-pkg",
+  "metric": "power",
+  "value": 0,
+  "unit": "watt",
+  "quality": "missing",
+  "source": "hwmon",
+  "collected_at": "2026-11-20T10:00:00Z"
+}

@@ -1,18 +1,20 @@
 # 版本矩阵
 
-> 状态：**部分已实测（工具链），第三方依赖待阶段 0 初始化锁文件后补全**（对应 [ADR-0001](../decisions/0001-version-matrix.md)）。
+> 状态：**阶段 0 已实测锁定**（对应 [ADR-0001](../decisions/0001-version-matrix.md)，accepted）。
 > 填写规则：每一项必须在开发环境与 Debian 13 目标环境中实际验证后填写，并注明验证日期。禁止填写 `latest`，禁止凭记忆填写。
 
 | 组件 | 锁定版本 | 锁文件 / 声明位置 | 验证日期 | 备注 |
 | ---- | -------- | ----------------- | -------- | ---- |
 | Debian | `13.6`（内核 `6.12.107+deb13-amd64`） | — | 2026-11-20 | L3 实体机实测 |
-| Rust 工具链 | MSRV `1.90.0`（Edition `2024`） | `agents/linux-agent/Cargo.toml` | 2026-11-20 | L3 `1.90.0` / L0 `1.91.1` 实测 |
-| Bun | `1.4.4` | `package.json` `packageManager` | 2026-11-20 | L0 实测 |
-| Elysia | 待阶段 0 初始化安装后填写 | `bun.lock` | — | |
-| Drizzle ORM / drizzle-kit | 待阶段 0 初始化安装后填写 | `bun.lock` | — | |
-| React | 待阶段 0 初始化安装后填写 | `bun.lock` | — | |
-| Vite | 待阶段 0 初始化安装后填写 | `bun.lock` | — | |
-| ECharts | 待阶段 0 初始化安装后填写 | `bun.lock` | — | |
+| Rust 工具链 | MSRV `1.90.0`（Edition `2024`） | 根 `Cargo.toml`、`Cargo.lock` | 2026-11-20 | L3 `1.90.0` / L0 `1.91.1` 实测 |
+| Bun | `1.4.4` | `package.json` `packageManager`、`bun.lock` | 2026-11-20 | L0 实测 |
+| TypeScript | `5.9.3` | `bun.lock` | 2026-11-20 | L0 实测 |
+| Ajv / ajv-formats | `8.20.0` / `3.0.1` | `bun.lock` | 2026-11-20 | JSON Schema Draft 2020-12 校验 |
+| Elysia | `1.4.32` | `bun.lock` | 2026-11-20 | L0 实测 |
+| Drizzle ORM / drizzle-kit | `0.44.7` / `0.31.11` | `bun.lock` | 2026-11-20 | L0 实测 |
+| React / React DOM | `19.3.1` | `bun.lock` | 2026-11-20 | L0 实测 |
+| Vite | `6.4.6` | `bun.lock` | 2026-11-20 | L0 实测 |
+| ECharts | `5.6.0` | `bun.lock` | 2026-11-20 | L0 实测 |
 | GHC | `9.10.3` | `core/health-engine/cabal.project` | 2026-11-20 | L0 实测 |
 | Cabal | `3.16.1.0` | `core/health-engine/cabal.project.freeze` | 2026-11-20 | L0 实测 |
 | Tauri | 2.x 待阶段 6 验证 | — | — | 阶段 6 |

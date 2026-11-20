@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "host_id": "debian-host-01",
+  "device_id": "disk-nvme-0000-02-00-0",
+  "device_path": "/dev/nvme0n1",
+  "protocol_type": "nvme",
+  "device_status": "online",
+  "smart_passed": true,
+  "temperature_celsius": 39,
+  "power_on_hours": "12450",
+  "power_cycles": "215",
+  "data_units_read": "340282366920938463463374607431768211455",
+  "data_units_written": "18446744073709551616",
+  "percentage_used": 3,
+  "available_spare": 100,
+  "critical_warning": 0,
+  "attributes": [
+    {
+      "id": 5,
+      "name": "Reallocated_Sector_Ct",
+      "value": 100,
+      "worst": 100,
+      "threshold": 10,
+      "raw_value": "9007199254740993",
+      "raw_string": "9007199254740993"
+    }
+  ],
+  "collected_at": "2026-11-20T10:00:00Z"
+}

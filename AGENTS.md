@@ -81,17 +81,19 @@ React ⇄ REST / WebSocket ⇄ Bun API ⇄ Haskell Health Engine
 ## 6. 目录地图
 
 ```
-AGENTS.md  GEMINI.md  README.md  .gitattributes  .gemini/settings.json
+AGENTS.md  GEMINI.md  README.md  .gitattributes  .gitignore  .gemini/settings.json
+package.json  bun.lock  tsconfig.base.json  Cargo.toml  Cargo.lock
 apps/api/          Bun + Elysia API（src/{routes,services,repositories,auth,middleware,websocket,ipc,config}, drizzle/, tests/）
 apps/web/          React + Vite 控制台
 apps/desktop/      Tauri 2（阶段 6）
-agents/linux-agent/  Rust workspace（crates/ 划分见 ADR-0008）
-core/health-engine/  Haskell（src/Health/, test/）
-packages/protocol/   JSON Schema、examples、typescript/、rust/、haskell/、CHANGELOG.md
+agents/linux-agent/  Rust Agent crates（crates/ 划分见 ADR-0008；由根 Cargo.toml 统一 workspace）
+core/health-engine/  Haskell（cabal.project、cabal.project.freeze、src/Health/, app/, test/）
+packages/protocol/   JSON Schema（schemas/）、examples/{valid,invalid}/、typescript/、rust/、haskell/、CHANGELOG.md
 deploy/            docker/、systemd/、nginx/、scripts/
 docs/              architecture/ api/ protocol/ collectors/ database/ security/ testing/ web/ development/ decisions/ archive/ status.md
-scripts/           开发、构建、维护脚本
+scripts/           开发、构建、同步、维护脚本
 tests/             integration/、fixtures/、hardware-simulation/、protocol/
+.github/workflows/ CI 配置
 ```
 
 新增目录须符合职责边界并更新本节。
@@ -111,18 +113,18 @@ tests/             integration/、fixtures/、hardware-simulation/、protocol/
 
 ## 8. 常用命令
 
-> 阶段 0 完成后填写。**未填写前不得臆造命令**；需要时先在阶段 0 建立并写回此表。
-> Linux 侧命令不得在 Windows pwsh 中执行，执行方式见 [docs/development/environment.md](docs/development/environment.md)。
+> Linux 侧命令不得在 Windows pwsh 中执行，L3 远程执行方式见 [docs/development/environment.md](docs/development/environment.md)。
 
 | 用途 | 命令 | 执行环境 |
 | ---- | ---- | -------- |
-| 安装依赖 | 待阶段 0 确定 | |
-| Rust 格式 / Lint / 测试 | 待阶段 0 确定 | L1+ |
-| Bun API 测试 / 类型检查 | 待阶段 0 确定 | L0+ |
-| Web 构建 / 测试 | 待阶段 0 确定 | L0+ |
-| Haskell 构建 / 测试 | 待阶段 0 确定 | L1+ |
-| 协议校验 | 待阶段 0 确定 | L0+ |
-| 数据库 Migration | 待阶段 0 确定 | |
+| 安装 JS/TS 依赖 | `bun install --frozen-lockfile` | L0+ |
+| Rust 格式 / Lint / 测试 | `cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace` | L0 / L3 |
+| Bun API 测试 / 类型检查 | `bun run typecheck && bun run test:api` | L0+ |
+| Web 构建 / 测试 | `bun run test:web && bun run build:web` | L0+ |
+| Haskell 构建 / 测试 | `cd core/health-engine && cabal build all && cabal test all --test-show-details=direct` | L0+ |
+| 协议校验（三端） | `bun run test:protocol` + Rust `cargo test -p lhm-protocol` + Haskell `cabal test lhm-protocol` | L0 / L3 |
+| 数据库 Migration | `bun --filter @lhm/api exec drizzle-kit generate`（阶段 2 起启用） | L0+ |
+| 一键全量本地 CI | `pwsh -File scripts/ci.ps1`（L0） / `bash scripts/ci.sh`（L3） | L0 / L3 |
 
 ## 9. 文档索引
 

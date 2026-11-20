@@ -1,0 +1,23 @@
+{
+  "protocol": "lhm-ipc",
+  "schema_version": "1.0",
+  "message_id": "01JDM000000000000000000001",
+  "message_type": "hello",
+  "host_id": "debian-host-01",
+  "agent_instance_id": "01JDM000000000000000000000",
+  "sequence": 0,
+  "sent_at": "2026-11-20T10:00:00Z",
+  "payload": {
+    "host": {
+      "host_id": "debian-host-01",
+      "hostname": "debian-monitor-node",
+      "os_name": "Debian GNU/Linux",
+      "os_version": "13.6",
+      "kernel_version": "6.12.107+deb13-amd64",
+      "architecture": "x86_64",
+      "agent_version": "0.1.0",
+      "boot_time": "2026-11-20T00:00:00Z",
+      "uptime_seconds": 36000
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "diagnostic_id": "diag-20261120-0001",
+  "host_id": "debian-host-01",
+  "device_id": "disk-wwn-5000c500a1b2c3d4",
+  "collector_name": "smart",
+  "level": "warn",
+  "error_code": "SMART_PERMISSION_DENIED",
+  "source": "smartctl",
+  "message": "Permission denied opening block device for SMART query",
+  "remediation": "Grant CAP_SYS_RAWIO via systemd unit or run diagnostic check as authorized user",
+  "occurred_at": "2026-11-20T10:00:00Z",
+  "details": {
+    "device_path": "/dev/sda"
+  }
+}

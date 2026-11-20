@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/host.schema.json",
+  "title": "Host",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "host_id",
+    "hostname",
+    "os_name",
+    "os_version",
+    "kernel_version",
+    "architecture",
+    "agent_version"
+  ],
+  "properties": {
+    "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "hostname": { "type": "string", "minLength": 1 },
+    "os_name": { "type": "string", "minLength": 1 },
+    "os_version": { "type": "string", "minLength": 1 },
+    "kernel_version": { "type": "string", "minLength": 1 },
+    "architecture": { "type": "string", "minLength": 1 },
+    "agent_version": { "type": "string", "minLength": 1 },
+    "boot_time": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+        { "type": "null" }
+      ]
+    },
+    "uptime_seconds": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    }
+  }
+}

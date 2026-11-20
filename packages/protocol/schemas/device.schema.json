@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/device.schema.json",
+  "title": "Device",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "device_id",
+    "host_id",
+    "device_type",
+    "vendor",
+    "model",
+    "name",
+    "identity",
+    "capabilities",
+    "device_status"
+  ],
+  "properties": {
+    "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "device_type": { "$ref": "common.schema.json#/$defs/DeviceType" },
+    "vendor": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "identity": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["stable"],
+      "properties": {
+        "stable": { "type": "boolean" },
+        "pci_bus_id": { "type": ["string", "null"] },
+        "pci_vendor_id": { "type": ["string", "null"] },
+        "pci_device_id": { "type": ["string", "null"] },
+        "wwn": { "type": ["string", "null"] },
+        "serial": { "type": ["string", "null"] },
+        "nvme_nguid": { "type": ["string", "null"] },
+        "driver": { "type": ["string", "null"] },
+        "raw_path": { "type": ["string", "null"] },
+        "topology": { "type": ["string", "null"] }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "device_status": { "$ref": "common.schema.json#/$defs/DeviceStatus" }
+  }
+}

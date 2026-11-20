@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/sensor-reading.schema.json",
+  "title": "SensorReading",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "host_id",
+    "device_id",
+    "sensor_id",
+    "metric",
+    "value",
+    "unit",
+    "quality",
+    "source",
+    "collected_at"
+  ],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/SchemaVersion" },
+    "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "sensor_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "metric": { "type": "string", "minLength": 1 },
+    "value": { "type": ["number", "null"] },
+    "unit": { "$ref": "common.schema.json#/$defs/Unit" },
+    "quality": { "$ref": "common.schema.json#/$defs/ReadingQuality" },
+    "source": { "type": "string", "minLength": 1 },
+    "collected_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "quality": { "const": "valid" } },
+        "required": ["quality"]
+      },
+      "then": {
+        "properties": { "value": { "type": "number" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "quality": { "const": "missing" } },
+        "required": ["quality"]
+      },
+      "then": {
+        "properties": { "value": { "type": "null" } }
+      }
+    }
+  ]
+}

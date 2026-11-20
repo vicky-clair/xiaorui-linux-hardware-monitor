@@ -1,0 +1,13 @@
+{
+  "protocol": "unknown-ipc",
+  "schema_version": "1.0",
+  "message_id": "01JDM000000000000000000099",
+  "message_type": "heartbeat",
+  "host_id": "debian-host-01",
+  "agent_instance_id": "01JDM000000000000000000000",
+  "sequence": 1,
+  "sent_at": "2026-11-20T10:00:00Z",
+  "payload": {
+    "uptime_seconds": 10
+  }
+}

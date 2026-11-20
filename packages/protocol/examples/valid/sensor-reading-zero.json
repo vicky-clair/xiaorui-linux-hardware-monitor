@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "host_id": "debian-host-01",
+  "device_id": "fan-hwmon-it87-fan1",
+  "sensor_id": "fan-hwmon-it87-fan1-rpm",
+  "metric": "fan_speed",
+  "value": 0,
+  "unit": "rpm",
+  "quality": "valid",
+  "source": "hwmon",
+  "collected_at": "2026-11-20T10:00:00Z"
+}

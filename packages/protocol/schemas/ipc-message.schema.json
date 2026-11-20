@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/ipc-message.schema.json",
+  "title": "IpcMessage",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "protocol",
+    "schema_version",
+    "message_id",
+    "message_type",
+    "host_id",
+    "agent_instance_id",
+    "sequence",
+    "sent_at",
+    "payload"
+  ],
+  "properties": {
+    "protocol": { "const": "lhm-ipc" },
+    "schema_version": { "$ref": "common.schema.json#/$defs/SchemaVersion" },
+    "message_id": { "type": "string", "minLength": 1 },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "hello",
+        "hello_ack",
+        "heartbeat",
+        "ack",
+        "inventory",
+        "sensor_readings",
+        "smart_report",
+        "collector_status",
+        "diagnostic",
+        "error"
+      ]
+    },
+    "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "agent_instance_id": { "type": "string", "minLength": 1 },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "sent_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+    "payload": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "message_type": { "const": "hello" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["host"],
+            "properties": {
+              "host": { "$ref": "host.schema.json" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "hello_ack" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["accepted", "server_schema_version"],
+            "properties": {
+              "accepted": { "type": "boolean" },
+              "server_schema_version": { "$ref": "common.schema.json#/$defs/SchemaVersion" },
+              "reason": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "heartbeat" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["uptime_seconds"],
+            "properties": {
+              "uptime_seconds": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "ack" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["acked_sequence"],
+            "properties": {
+              "acked_sequence": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "inventory" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["devices", "sensors"],
+            "properties": {
+              "devices": {
+                "type": "array",
+                "items": { "$ref": "device.schema.json" }
+              },
+              "sensors": {
+                "type": "array",
+                "items": { "$ref": "sensor.schema.json" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "sensor_readings" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["readings"],
+            "properties": {
+              "readings": {
+                "type": "array",
+                "items": { "$ref": "sensor-reading.schema.json" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "smart_report" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["report"],
+            "properties": {
+              "report": { "$ref": "smart-report.schema.json" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "collector_status" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["collectors"],
+            "properties": {
+              "collectors": {
+                "type": "array",
+                "items": { "$ref": "collector-status.schema.json" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "diagnostic" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["diagnostic"],
+            "properties": {
+              "diagnostic": { "$ref": "diagnostic.schema.json" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "message_type": { "const": "error" } } },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": ["error_code", "message"],
+            "properties": {
+              "error_code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+              "message": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

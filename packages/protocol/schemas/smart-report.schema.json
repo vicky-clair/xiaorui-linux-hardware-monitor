@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/smart-report.schema.json",
+  "title": "SmartReport",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "host_id",
+    "device_id",
+    "device_path",
+    "protocol_type",
+    "device_status",
+    "attributes",
+    "collected_at"
+  ],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/SchemaVersion" },
+    "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "device_path": { "type": "string", "minLength": 1 },
+    "protocol_type": {
+      "type": "string",
+      "enum": ["ata", "nvme", "scsi", "unknown"]
+    },
+    "device_status": { "$ref": "common.schema.json#/$defs/DeviceStatus" },
+    "smart_passed": { "type": ["boolean", "null"] },
+    "temperature_celsius": { "type": ["number", "null"] },
+    "power_on_hours": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UintString" },
+        { "type": "null" }
+      ]
+    },
+    "power_cycles": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UintString" },
+        { "type": "null" }
+      ]
+    },
+    "data_units_read": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UintString" },
+        { "type": "null" }
+      ]
+    },
+    "data_units_written": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UintString" },
+        { "type": "null" }
+      ]
+    },
+    "percentage_used": { "type": ["number", "null"], "minimum": 0 },
+    "available_spare": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+    "critical_warning": { "type": ["integer", "null"], "minimum": 0 },
+    "attributes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "name", "raw_value"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 0 },
+          "name": { "type": "string", "minLength": 1 },
+          "value": { "type": ["integer", "null"] },
+          "worst": { "type": ["integer", "null"] },
+          "threshold": { "type": ["integer", "null"] },
+          "raw_value": { "$ref": "common.schema.json#/$defs/UintString" },
+          "raw_string": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "collected_at": { "$ref": "common.schema.json#/$defs/UtcTimestamp" }
+  }
+}

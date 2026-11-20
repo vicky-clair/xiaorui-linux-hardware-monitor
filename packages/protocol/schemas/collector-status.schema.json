@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/collector-status.schema.json",
+  "title": "CollectorStatus",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "collector_name",
+    "host_id",
+    "status",
+    "capability_status",
+    "interval_seconds",
+    "consecutive_failures"
+  ],
+  "properties": {
+    "collector_name": { "type": "string", "minLength": 1 },
+    "host_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "status": {
+      "type": "string",
+      "enum": ["running", "degraded", "stopped", "error"]
+    },
+    "capability_status": { "$ref": "common.schema.json#/$defs/CapabilityStatus" },
+    "interval_seconds": { "type": "integer", "minimum": 1 },
+    "last_run_at": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+        { "type": "null" }
+      ]
+    },
+    "last_success_at": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UtcTimestamp" },
+        { "type": "null" }
+      ]
+    },
+    "consecutive_failures": { "type": "integer", "minimum": 0 },
+    "last_error_code": { "type": ["string", "null"] },
+    "last_error_message": { "type": ["string", "null"] }
+  }
+}

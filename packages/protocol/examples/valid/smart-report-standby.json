@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "host_id": "debian-host-01",
+  "device_id": "disk-wwn-5000c500a1b2c3d4",
+  "device_path": "/dev/sdb",
+  "protocol_type": "ata",
+  "device_status": "standby",
+  "smart_passed": null,
+  "temperature_celsius": null,
+  "power_on_hours": null,
+  "power_cycles": null,
+  "data_units_read": null,
+  "data_units_written": null,
+  "percentage_used": null,
+  "available_spare": null,
+  "critical_warning": null,
+  "attributes": [],
+  "collected_at": "2026-11-20T10:00:00Z"
+}

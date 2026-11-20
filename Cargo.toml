@@ -1,0 +1,12 @@
+[workspace]
+resolver = "3"
+members = [
+    "packages/protocol/rust",
+    "agents/linux-agent/crates/agent-core",
+    "agents/linux-agent/crates/agent-bin",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.90"
+license = "MIT"

@@ -24,6 +24,7 @@
 | health_events | 设备状态变化等事件 |
 | analysis_results | Haskell 分析结果（含引擎版本、规则版本、阈值来源） |
 | alert_rules | 告警规则 |
+| alert_states | Haskell 告警状态机快照（按设备与规则，由 Bun 持久化，见 ADR-0004 / ADR-0007） |
 | alert_history | 告警生命周期记录 |
 | app_users | 用户 |
 | app_sessions | 会话 |

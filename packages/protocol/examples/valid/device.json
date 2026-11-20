@@ -1,0 +1,18 @@
+{
+  "device_id": "gpu-pci-0000-01-00-0",
+  "host_id": "debian-host-01",
+  "device_type": "gpu",
+  "vendor": "intel",
+  "model": "Example Integrated Graphics",
+  "name": "Intel GPU",
+  "identity": {
+    "stable": true,
+    "pci_bus_id": "0000:01:00.0",
+    "pci_vendor_id": "8086",
+    "pci_device_id": "4e55",
+    "driver": "i915",
+    "raw_path": "/sys/bus/pci/devices/0000:01:00.0"
+  },
+  "capabilities": ["temperature", "frequency"],
+  "device_status": "online"
+}

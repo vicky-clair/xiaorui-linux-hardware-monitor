@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "host_id": "debian-host-01",
+  "device_id": "disk-nvme-0000-02-00-0",
+  "device_path": "/dev/nvme0n1",
+  "protocol_type": "nvme",
+  "device_status": "online",
+  "smart_passed": true,
+  "temperature_celsius": 39,
+  "power_on_hours": "12450",
+  "power_cycles": "215",
+  "data_units_read": "123abc",
+  "data_units_written": "0",
+  "percentage_used": 3,
+  "available_spare": 100,
+  "critical_warning": 0,
+  "attributes": [],
+  "collected_at": "2026-11-20T10:00:00Z"
+}

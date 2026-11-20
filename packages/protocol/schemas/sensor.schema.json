@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lhm.local/schemas/v1/sensor.schema.json",
+  "title": "Sensor",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "sensor_id",
+    "device_id",
+    "sensor_type",
+    "sensor_name",
+    "source",
+    "unit",
+    "capability_status",
+    "enabled"
+  ],
+  "properties": {
+    "sensor_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "device_id": { "$ref": "common.schema.json#/$defs/StableId" },
+    "sensor_type": { "$ref": "common.schema.json#/$defs/SensorType" },
+    "sensor_name": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "unit": { "$ref": "common.schema.json#/$defs/Unit" },
+    "capability_status": { "$ref": "common.schema.json#/$defs/CapabilityStatus" },
+    "enabled": { "type": "boolean" }
+  }
+}

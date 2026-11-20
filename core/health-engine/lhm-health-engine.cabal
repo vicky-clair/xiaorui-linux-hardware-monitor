@@ -1,0 +1,49 @@
+cabal-version:   3.4
+name:            lhm-health-engine
+version:         0.1.0
+synopsis:        Pure health analysis engine for Linux Hardware Monitor
+license:         MIT
+build-type:      Simple
+
+common shared
+  default-language: GHC2021
+  ghc-options:      -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
+
+library
+  import:          shared
+  hs-source-dirs:  src
+  exposed-modules:
+    Health.Anomaly
+    Health.Correlation
+    Health.Engine
+    Health.Protocol
+    Health.Rules
+    Health.Scoring
+    Health.StateMachine
+    Health.Thresholds
+    Health.Trends
+    Health.Types
+  build-depends:
+    , base          >=4.18 && <5
+    , lhm-protocol
+    , text          >=2.0  && <2.2
+
+executable lhm-health-engine
+  import:         shared
+  hs-source-dirs: app
+  main-is:        Main.hs
+  build-depends:
+    , base
+    , lhm-health-engine
+    , text
+
+test-suite lhm-health-engine-test
+  import:         shared
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:        Main.hs
+  build-depends:
+    , base
+    , lhm-health-engine
+    , lhm-protocol
+    , text

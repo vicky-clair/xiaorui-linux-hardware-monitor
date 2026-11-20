@@ -1,0 +1,9 @@
+[package]
+name = "agent-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+lhm-protocol = { path = "../../../../packages/protocol/rust" }

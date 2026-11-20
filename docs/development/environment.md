@@ -1,6 +1,6 @@
 # 开发与验证环境
 
-> 状态：**草案，对应 [ADR-0002](../decisions/0002-dev-and-verification-env.md)（proposed，待批准）**。
+> 状态：**已批准，对应 [ADR-0002](../decisions/0002-dev-and-verification-env.md)（accepted）**。
 
 ## 1. 现状（2026-11-20 实测）
 

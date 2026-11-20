@@ -1,0 +1,12 @@
+{
+  "collector_name": "hwmon",
+  "host_id": "debian-host-01",
+  "status": "running",
+  "capability_status": "supported",
+  "interval_seconds": 3,
+  "last_run_at": "2026-11-20T10:00:00Z",
+  "last_success_at": "2026-11-20T10:00:00Z",
+  "consecutive_failures": 0,
+  "last_error_code": null,
+  "last_error_message": null
+}

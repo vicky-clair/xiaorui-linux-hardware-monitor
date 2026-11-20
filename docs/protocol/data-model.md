@@ -111,12 +111,13 @@
 
 要求：
 
-- UTF-8；单条消息长度上限（具体值在 ADR-0003 中确定）。
-- **分帧方式必须在 ADR-0003 中明确**（JSON Lines 或长度前缀）。不得假设一次 `read` 等于一条完整消息。
-- 去重键为 `(agent_instance_id, sequence)`：`sequence` 在单个 Agent 实例内单调递增，Agent 重启后生成新的 `agent_instance_id`。
+- UTF-8；单条消息长度上限 **1 MiB（1,048,576 字节）**（见 [ADR-0003](../decisions/0003-agent-api-ipc.md)）。
+- **分帧方式**：4 字节大端无符号长度前缀（`u32` BE）+ UTF-8 JSON 负载。不得假设一次 `read` 等于一条完整消息。
+- 连接方向：Bun API 监听（Server，默认 `/run/linux-hardware-monitor/ipc.sock`，可配置覆盖），Rust Agent 主动连接（Client）。
+- 去重键为 `(agent_instance_id, sequence)`：`sequence` 在单个 Agent 实例内从 `1` 单调递增，Agent 重启后生成新的 `agent_instance_id`。
 - 校验：协议名、版本、消息类型、JSON Schema。
-- 心跳、断线重连、错误消息、API 不可用时的缓冲与重放策略在 ADR-0003 中确定。
-- 消息类型至少包括：`hello`（握手与版本协商）、`heartbeat`、`inventory`（设备 / 传感器清单）、`sensor_readings`、`smart_report`、`collector_status`、`diagnostic`、`error`。
+- 心跳 10 秒、超时 30 秒、持久化后返回 `ack`；API 不可用时 Agent 维持有界内存缓冲（默认 10,000 条 reading 或 32 MiB），溢出按 FIFO 丢弃最旧采样并在重连后上报 `diagnostic`。
+- 消息类型至少包括：`hello`、`hello_ack`、`heartbeat`、`ack`、`inventory`、`sensor_readings`、`smart_report`、`collector_status`、`diagnostic`、`error`。
 
 ## 7. 版本兼容
 

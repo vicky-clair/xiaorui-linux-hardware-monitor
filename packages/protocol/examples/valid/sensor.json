@@ -1,0 +1,10 @@
+{
+  "sensor_id": "gpu-pci-0000-01-00-0-temp-edge",
+  "device_id": "gpu-pci-0000-01-00-0",
+  "sensor_type": "temperature",
+  "sensor_name": "GPU Edge",
+  "source": "hwmon",
+  "unit": "celsius",
+  "capability_status": "supported",
+  "enabled": true
+}

@@ -1,0 +1,3 @@
+packages:
+  ../../packages/protocol/haskell/lhm-protocol.cabal
+  ./lhm-health-engine.cabal
