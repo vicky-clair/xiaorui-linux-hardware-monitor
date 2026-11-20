@@ -113,3 +113,4 @@ docker compose --env-file deploy/docker/.env -f deploy/docker/docker-compose.yml
 - 定期观察 `docker stats` 内存趋势（无持续增长泄漏）
 - 定期检查 SQLite WAL 体积、小时/分钟聚合与自动保留清理日志
 - 定期执行备份恢复演练
+- 若宿主机外接 USB 移动硬盘（如媒体库），可参考 [外接 USB 移动机械硬盘连接与防磨损优化指南](usb-hdd-optimization.md) 进行 `UUID` 挂载、`udev` 预读及 APM 磁头归位优化

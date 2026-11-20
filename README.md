@@ -155,6 +155,7 @@ bash deploy/scripts/restore-sqlite.sh ./backups/lhm-<UTC>.sqlite /tmp/lhm-restor
 | ---- | ---- |
 | **[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** | **开发者完整指南**（架构原理、各语言模块详解、本地与实机开发联调、排错速查） |
 | [docs/deployment/deployment.md](docs/deployment/deployment.md) | 生产部署手册、可选 HTTPS 启用步骤、在线备份/恢复演练与实测基准 |
+| [docs/deployment/usb-hdd-optimization.md](docs/deployment/usb-hdd-optimization.md) | 宿主机外接 USB 移动机械硬盘连接优化（`udev` / `fstab` / APM 防磁头高频归位与回滚手册） |
 | [deploy/systemd/README.md](deploy/systemd/README.md) | 非 root `systemd` 沙箱加固安装与 `systemd-analyze security` 审计指南 |
 | [docs/api/api-spec.md](docs/api/api-spec.md) | REST API、WebSocket 增量推送、CSV/JSON 导出与 Webhook 通知接口规范 |
 | [docs/decisions/README.md](docs/decisions/README.md) | 架构决策记录清单（ADR-0001 至 ADR-0010） |
