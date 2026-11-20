@@ -14,6 +14,7 @@ import {
 } from "./components/StatusBadge.tsx";
 import { buildTimeSeriesOption } from "./components/TimeSeriesChart.tsx";
 import { formatReadingValue, resolveTimeRange } from "./lib/format.ts";
+import { I18nProvider, translateAnalysisText, translateDiagnostic } from "./lib/i18n.tsx";
 import { AlertsView } from "./pages/AlertsPage.tsx";
 import { AnalysisView } from "./pages/AnalysisPage.tsx";
 import { ConfigView } from "./pages/ConfigPage.tsx";
@@ -275,5 +276,42 @@ describe("Core page rendering", () => {
       />,
     );
     expect(viewerConfigHtml).toContain("只读角色（viewer）");
+  });
+
+  test("switches UI and diagnostic/analysis logs cleanly between zh, en, and ja", () => {
+    const diagSample = {
+      errorCode: "SMART_PERMISSION_DENIED",
+      message: "Permission denied running smartctl on /dev/sda",
+      remediation: "Grant CAP_SYS_RAWIO via systemd unit (ADR-0006) to enable SMART telemetry",
+    };
+
+    const zhDiag = translateDiagnostic("zh", diagSample);
+    expect(zhDiag.message).toContain("/dev/sda");
+    expect(zhDiag.message).toContain("权限不足");
+
+    const enDiag = translateDiagnostic("en", diagSample);
+    expect(enDiag.message).toBe(diagSample.message);
+
+    const jaDiag = translateDiagnostic("ja", diagSample);
+    expect(jaDiag.message).toContain("/dev/sda");
+    expect(jaDiag.message).toContain("権限が不足");
+
+    expect(translateAnalysisText("ja", "DATA_STALE: expired")).toContain("期限切れ");
+
+    const enHtml = renderToStaticMarkup(
+      <I18nProvider initialLocale="en">
+        <LoginPage onAuthenticated={() => {}} />
+      </I18nProvider>,
+    );
+    expect(enHtml).toContain("Bootstrap Admin");
+    expect(enHtml).toContain("Sign In");
+
+    const jaHtml = renderToStaticMarkup(
+      <I18nProvider initialLocale="ja">
+        <LoginPage onAuthenticated={() => {}} />
+      </I18nProvider>,
+    );
+    expect(jaHtml).toContain("初期管理者作成");
+    expect(jaHtml).toContain("ログイン");
   });
 });

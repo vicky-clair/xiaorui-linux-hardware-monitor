@@ -8,6 +8,7 @@ import {
   type SensorRow,
 } from "../lib/api.ts";
 import { formatLocalTime, formatReadingValue } from "../lib/format.ts";
+import { useI18n } from "../lib/i18n.tsx";
 import {
   CapabilityBadge,
   DeviceStatusBadge,
@@ -21,6 +22,7 @@ import {
 } from "../components/States.tsx";
 
 export interface SensorCategoryProps {
+  categoryKey: string;
   title: string;
   deviceTypes?: string[];
   sensorTypes?: string[];
@@ -29,12 +31,14 @@ export interface SensorCategoryProps {
 }
 
 export function SensorCategoryPage({
+  categoryKey,
   title,
   deviceTypes,
   sensorTypes,
   emptyDescription,
   liveReadings,
 }: SensorCategoryProps) {
+  const { locale, t } = useI18n();
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [sensors, setSensors] = useState<SensorRow[]>([]);
   const [initialLatest, setInitialLatest] = useState<Record<string, RawReadingRow>>({});
@@ -58,7 +62,6 @@ export function SensorCategoryPage({
         setDevices(matchedDevices);
         setSensors(matchedSensors);
 
-        // Fetch single latest point for each supported sensor once on page mount (live updates come via WS)
         const entries = await Promise.all(
           matchedSensors
             .filter((s) => s.capabilityStatus === "supported")
@@ -87,12 +90,17 @@ export function SensorCategoryPage({
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [title]);
+  useEffect(load, [categoryKey]);
 
-  if (loading) return <LoadingState message={`正在加载 ${title}...`} />;
+  if (loading) return <LoadingState message={`${t("sensorCat.loadingPrefix")}${title}...`} />;
   if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
   if (sensors.length === 0) {
-    return <EmptyState title={`${title}暂无传感器`} description={emptyDescription} />;
+    return (
+      <EmptyState
+        title={`${title}${t("sensorCat.emptySuffix")}`}
+        description={emptyDescription}
+      />
+    );
   }
 
   const deniedSensors = sensors.filter((s) => s.capabilityStatus === "permission_denied");
@@ -102,8 +110,8 @@ export function SensorCategoryPage({
     <>
       {deniedSensors.length > 0 && (
         <PermissionDeniedNotice
-          subject={`以下指标因权限不足无法读取：${deniedSensors.map((s) => s.sensorName).join("、")}`}
-          remediation="请查看「采集器诊断」页面获取最小权限配置建议，不要将权限不足视为硬件故障。"
+          subject={`${t("sensorCat.deniedSubjectPrefix")}${deniedSensors.map((s) => s.sensorName).join(", ")}`}
+          remediation={t("sensorCat.deniedRemediation")}
         />
       )}
 
@@ -113,14 +121,14 @@ export function SensorCategoryPage({
           <table>
             <thead>
               <tr>
-                <th>设备</th>
-                <th>设备状态</th>
-                <th>传感器</th>
-                <th>来源</th>
-                <th>能力状态</th>
-                <th>当前值</th>
-                <th>数据质量</th>
-                <th>采样时间</th>
+                <th>{t("th.device")}</th>
+                <th>{t("th.deviceStatus")}</th>
+                <th>{t("th.sensor")}</th>
+                <th>{t("th.source")}</th>
+                <th>{t("th.capability")}</th>
+                <th>{t("th.currentValue")}</th>
+                <th>{t("th.quality")}</th>
+                <th>{t("th.collectedAt")}</th>
               </tr>
             </thead>
             <tbody>
@@ -150,7 +158,7 @@ export function SensorCategoryPage({
                     </td>
                     <td className="mono" style={{ fontWeight: 600 }}>
                       {s.capabilityStatus === "supported"
-                        ? formatReadingValue(value, s.unit, quality)
+                        ? formatReadingValue(value, s.unit, quality, locale)
                         : "—"}
                     </td>
                     <td>
@@ -160,7 +168,7 @@ export function SensorCategoryPage({
                         <span style={{ color: "var(--text-muted)" }}>—</span>
                       )}
                     </td>
-                    <td>{formatLocalTime(collectedAt)}</td>
+                    <td>{formatLocalTime(collectedAt, locale)}</td>
                   </tr>
                 );
               })}

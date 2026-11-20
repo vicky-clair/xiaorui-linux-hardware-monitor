@@ -4,13 +4,15 @@ import type {
   ReadingQuality,
 } from "@lhm/protocol/types";
 import {
-  CAPABILITY_LABELS,
-  DEVICE_STATUS_LABELS,
-  QUALITY_LABELS,
-} from "../lib/format.ts";
+  translateCapability,
+  translateDeviceStatus,
+  translateQuality,
+  useI18n,
+} from "../lib/i18n.tsx";
 
 export function CapabilityBadge({ status }: { status: CapabilityStatus }) {
-  const meta = CAPABILITY_LABELS[status] ?? { label: status, tone: "muted" };
+  const { locale } = useI18n();
+  const meta = translateCapability(locale, status);
   return (
     <span className={`badge badge-${meta.tone}`} data-capability={status}>
       {meta.label}
@@ -19,7 +21,8 @@ export function CapabilityBadge({ status }: { status: CapabilityStatus }) {
 }
 
 export function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
-  const meta = DEVICE_STATUS_LABELS[status] ?? { label: status, tone: "muted" };
+  const { locale } = useI18n();
+  const meta = translateDeviceStatus(locale, status);
   return (
     <span className={`badge badge-${meta.tone}`} data-device-status={status}>
       {meta.label}
@@ -28,7 +31,8 @@ export function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
 }
 
 export function QualityBadge({ quality }: { quality: ReadingQuality }) {
-  const meta = QUALITY_LABELS[quality] ?? { label: quality, tone: "muted" };
+  const { locale } = useI18n();
+  const meta = translateQuality(locale, quality);
   return (
     <span className={`badge badge-${meta.tone}`} data-quality={quality}>
       {meta.label}

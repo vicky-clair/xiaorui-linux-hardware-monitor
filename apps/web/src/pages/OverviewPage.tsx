@@ -1,78 +1,88 @@
 import { useEffect, useState } from "react";
 import { api, ApiClientError, type OverviewResponse } from "../lib/api.ts";
 import { formatLocalTime, formatUptime } from "../lib/format.ts";
+import {
+  translateCollectorStatus,
+  translateDiagnostic,
+  translateLogLevel,
+  useI18n,
+} from "../lib/i18n.tsx";
 import { CapabilityBadge } from "../components/StatusBadge.tsx";
 import { EmptyState, ErrorState, LoadingState } from "../components/States.tsx";
 
 export function OverviewView({ data }: { data: OverviewResponse }) {
+  const { locale, t } = useI18n();
   const host = data.hosts[0];
   return (
     <>
-      <div className="banner banner-info">
-        前端仅展示 API 返回的硬件遥测与 Haskell 引擎分析结果，绝不在前端推断健康状态或补零。
-      </div>
+      <div className="banner banner-info">{t("overview.notice")}</div>
 
       <div className="card-grid">
         <div className="card">
-          <p className="card-title">监控主机</p>
+          <p className="card-title">{t("overview.host")}</p>
           <div className="card-value">{host ? host.hostname : "—"}</div>
           <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 4 }}>
-            {host ? `${host.osName} ${host.osVersion} · ${host.kernelVersion}` : "等待 Agent 上报"}
+            {host
+              ? `${host.osName} ${host.osVersion} · ${host.kernelVersion}`
+              : t("overview.waitAgent")}
           </div>
         </div>
         <div className="card">
-          <p className="card-title">已发现设备</p>
+          <p className="card-title">{t("overview.devices")}</p>
           <div className="card-value">{data.device_count}</div>
           <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 4 }}>
-            传感器总数：{data.sensor_count}
+            {t("overview.sensorCount")}
+            {data.sensor_count}
           </div>
         </div>
         <div className="card">
-          <p className="card-title">权限受限设备</p>
+          <p className="card-title">{t("overview.permDeniedDevices")}</p>
           <div className="card-value">{data.coverage_summary.devices_with_permission_denied}</div>
           <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 4 }}>
-            数据过期设备：{data.coverage_summary.devices_with_stale}
+            {t("overview.staleDevices")}
+            {data.coverage_summary.devices_with_stale}
           </div>
         </div>
         <div className="card">
-          <p className="card-title">主机运行时间</p>
+          <p className="card-title">{t("overview.uptime")}</p>
           <div className="card-value" style={{ fontSize: 18 }}>
-            {host ? formatUptime(host.uptimeSeconds) : "—"}
+            {host ? formatUptime(host.uptimeSeconds, locale) : "—"}
           </div>
           <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 4 }}>
-            最近心跳：{host ? formatLocalTime(host.lastSeenAt) : "—"}
+            {t("overview.lastHeartbeat")}
+            {host ? formatLocalTime(host.lastSeenAt, locale) : "—"}
           </div>
         </div>
       </div>
 
       <div className="panel">
-        <h2>采集器运行状态</h2>
+        <h2>{t("overview.collectorsTitle")}</h2>
         {data.collectors.length === 0 ? (
-          <EmptyState title="尚无采集器状态" description="等待 Rust Agent 上报 collector_status。" />
+          <EmptyState title={t("overview.noCollectors")} description={t("overview.noCollectorsDesc")} />
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>采集器</th>
-                  <th>运行状态</th>
-                  <th>能力状态</th>
-                  <th>周期</th>
-                  <th>连续失败</th>
-                  <th>最近成功时间</th>
+                  <th>{t("th.collector")}</th>
+                  <th>{t("th.runStatus")}</th>
+                  <th>{t("th.capability")}</th>
+                  <th>{t("th.interval")}</th>
+                  <th>{t("th.failures")}</th>
+                  <th>{t("th.lastSuccess")}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.collectors.map((c) => (
                   <tr key={`${c.hostId}-${c.collectorName}`}>
                     <td className="mono">{c.collectorName}</td>
-                    <td>{c.status}</td>
+                    <td>{translateCollectorStatus(locale, c.status)}</td>
                     <td>
                       <CapabilityBadge status={c.capabilityStatus} />
                     </td>
                     <td>{c.intervalSeconds} s</td>
                     <td>{c.consecutiveFailures}</td>
-                    <td>{formatLocalTime(c.lastSuccessAt)}</td>
+                    <td>{formatLocalTime(c.lastSuccessAt, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -82,38 +92,42 @@ export function OverviewView({ data }: { data: OverviewResponse }) {
       </div>
 
       <div className="panel">
-        <h2>最近诊断记录</h2>
+        <h2>{t("overview.recentDiagnostics")}</h2>
         {data.recent_diagnostics.length === 0 ? (
-          <p style={{ margin: 0, color: "var(--text-muted)" }}>暂无诊断事件。</p>
+          <p style={{ margin: 0, color: "var(--text-muted)" }}>{t("overview.noDiagnostics")}</p>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>时间</th>
-                  <th>级别</th>
-                  <th>错误代码</th>
-                  <th>设备</th>
-                  <th>详情与建议</th>
+                  <th>{t("th.time")}</th>
+                  <th>{t("th.level")}</th>
+                  <th>{t("th.errorCode")}</th>
+                  <th>{t("th.device")}</th>
+                  <th>{t("th.detailsAndRemediation")}</th>
                 </tr>
               </thead>
               <tbody>
-                {data.recent_diagnostics.map((d) => (
-                  <tr key={d.id}>
-                    <td>{formatLocalTime(d.occurredAt)}</td>
-                    <td className="mono">{d.level}</td>
-                    <td className="mono">{d.errorCode}</td>
-                    <td className="mono">{d.deviceId ?? "—"}</td>
-                    <td>
-                      <div>{d.message}</div>
-                      {d.remediation && (
-                        <div style={{ color: "var(--text-muted)", fontSize: 12 }}>
-                          建议：{d.remediation}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {data.recent_diagnostics.map((d) => {
+                  const localized = translateDiagnostic(locale, d);
+                  return (
+                    <tr key={d.id}>
+                      <td>{formatLocalTime(d.occurredAt, locale)}</td>
+                      <td className="mono">{translateLogLevel(locale, d.level)}</td>
+                      <td className="mono">{d.errorCode}</td>
+                      <td className="mono">{d.deviceId ?? "—"}</td>
+                      <td>
+                        <div>{localized.message}</div>
+                        {localized.remediation && (
+                          <div style={{ color: "var(--text-muted)", fontSize: 12 }}>
+                            {t("state.suggestion")}
+                            {localized.remediation}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -124,6 +138,7 @@ export function OverviewView({ data }: { data: OverviewResponse }) {
 }
 
 export function OverviewPage() {
+  const { t } = useI18n();
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -146,7 +161,7 @@ export function OverviewPage() {
 
   useEffect(load, []);
 
-  if (loading) return <LoadingState message="正在加载系统总览..." />;
+  if (loading) return <LoadingState message={t("overview.loading")} />;
   if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
   if (!data) return <EmptyState />;
   return <OverviewView data={data} />;

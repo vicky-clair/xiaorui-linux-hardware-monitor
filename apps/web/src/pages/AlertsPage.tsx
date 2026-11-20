@@ -7,6 +7,7 @@ import {
   type UserInfo,
 } from "../lib/api.ts";
 import { formatLocalTime } from "../lib/format.ts";
+import { useI18n } from "../lib/i18n.tsx";
 import {
   EmptyState,
   ErrorState,
@@ -41,6 +42,7 @@ export function AlertsView({
   onDeleteRule: (ruleId: string) => void;
   warning: string | null;
 }) {
+  const { locale, t } = useI18n();
   const [ruleId, setRuleId] = useState("cpu-temp-warn");
   const [threshold, setThreshold] = useState("80");
   const [duration, setDuration] = useState("60");
@@ -64,21 +66,21 @@ export function AlertsView({
   return (
     <>
       <div className="panel">
-        <h2>告警中心</h2>
+        <h2>{t("alerts.title")}</h2>
         {alerts.length === 0 ? (
-          <EmptyState title="当前无告警记录" description="Haskell 引擎触发告警后将在此展示。" />
+          <EmptyState title={t("alerts.empty")} description={t("alerts.emptyDesc")} />
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>状态</th>
-                  <th>级别</th>
-                  <th>设备 / 规则</th>
-                  <th>摘要</th>
-                  <th>触发时间</th>
-                  <th>确认信息</th>
-                  <th>操作</th>
+                  <th>{t("th.status")}</th>
+                  <th>{t("th.severity")}</th>
+                  <th>{t("th.deviceRule")}</th>
+                  <th>{t("th.summary")}</th>
+                  <th>{t("th.triggeredAt")}</th>
+                  <th>{t("th.ackInfo")}</th>
+                  <th>{t("th.action")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,20 +90,20 @@ export function AlertsView({
                       <span
                         className={`badge ${a.status === "firing" ? "badge-err" : "badge-ok"}`}
                       >
-                        {a.status}
+                        {t(`alertStatus.${a.status}`)}
                       </span>
                     </td>
-                    <td className="mono">{a.severity}</td>
+                    <td className="mono">{t(`sev.${a.severity}`)}</td>
                     <td className="mono">
                       <div>{a.device_id}</div>
                       <div style={{ color: "var(--text-muted)" }}>{a.rule_id}</div>
                     </td>
                     <td>{a.summary}</td>
-                    <td>{formatLocalTime(a.triggered_at)}</td>
+                    <td>{formatLocalTime(a.triggered_at, locale)}</td>
                     <td>
                       {a.acknowledged_by
-                        ? `${a.acknowledged_by} (${formatLocalTime(a.acknowledged_at)})`
-                        : "未确认"}
+                        ? `${a.acknowledged_by} (${formatLocalTime(a.acknowledged_at, locale)})`
+                        : t("alerts.unacked")}
                     </td>
                     <td>
                       {!a.acknowledged_at && (
@@ -110,7 +112,7 @@ export function AlertsView({
                           className="btn btn-secondary"
                           onClick={() => onAck(a.alert_id)}
                         >
-                          确认告警
+                          {t("alerts.ackBtn")}
                         </button>
                       )}
                     </td>
@@ -123,18 +125,19 @@ export function AlertsView({
       </div>
 
       <div className="panel">
-        <h2>告警规则管理</h2>
+        <h2>{t("alerts.rulesTitle")}</h2>
         {!isAdmin && (
           <div style={{ marginBottom: 12 }}>
             <PermissionDeniedNotice
-              subject="当前账户为只读角色（viewer），无法新增或删除告警规则。"
-              remediation="请使用管理员（admin）账户维护告警阈值规则。"
+              subject={t("alerts.viewerDenied")}
+              remediation={t("alerts.viewerRemediation")}
             />
           </div>
         )}
         {warning && (
           <div className="banner banner-warn" style={{ marginBottom: 12 }}>
-            阈值安全提示：{warning}
+            {t("alerts.warningPrefix")}
+            {warning}
           </div>
         )}
 
@@ -145,14 +148,14 @@ export function AlertsView({
               required
               value={ruleId}
               onChange={(e) => setRuleId(e.target.value)}
-              placeholder="规则 ID"
+              placeholder={t("alerts.ruleIdPlaceholder")}
             />
             <input
               type="number"
               required
               value={threshold}
               onChange={(e) => setThreshold(e.target.value)}
-              placeholder="温度阈值 °C"
+              placeholder={t("alerts.thresholdPlaceholder")}
               style={{ width: 120 }}
             />
             <input
@@ -161,28 +164,28 @@ export function AlertsView({
               min={0}
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              placeholder="持续秒数"
+              placeholder={t("alerts.durationPlaceholder")}
               style={{ width: 110 }}
             />
             <button type="submit" className="btn">
-              新增 CPU 温度规则
+              {t("alerts.addRuleBtn")}
             </button>
           </form>
         )}
 
         {rules.length === 0 ? (
-          <p style={{ margin: 0, color: "var(--text-muted)" }}>暂未配置自定义告警规则。</p>
+          <p style={{ margin: 0, color: "var(--text-muted)" }}>{t("alerts.noRules")}</p>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>规则 ID</th>
-                  <th>设备类型</th>
-                  <th>指标与条件</th>
-                  <th>持续时间</th>
-                  <th>级别</th>
-                  {isAdmin && <th>操作</th>}
+                  <th>{t("th.ruleId")}</th>
+                  <th>{t("th.deviceType")}</th>
+                  <th>{t("th.metricCond")}</th>
+                  <th>{t("th.duration")}</th>
+                  <th>{t("th.severity")}</th>
+                  {isAdmin && <th>{t("th.action")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -194,7 +197,7 @@ export function AlertsView({
                       {r.metric} {r.operator} {r.threshold} {r.unit}
                     </td>
                     <td>{r.duration_seconds} s</td>
-                    <td className="mono">{r.severity}</td>
+                    <td className="mono">{t(`sev.${r.severity}`)}</td>
                     {isAdmin && (
                       <td>
                         <button
@@ -202,7 +205,7 @@ export function AlertsView({
                           className="btn btn-secondary"
                           onClick={() => onDeleteRule(r.rule_id)}
                         >
-                          删除
+                          {t("alerts.deleteBtn")}
                         </button>
                       </td>
                     )}
@@ -218,6 +221,7 @@ export function AlertsView({
 }
 
 export function AlertsPage({ user }: { user: UserInfo }) {
+  const { t } = useI18n();
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [rules, setRules] = useState<AlertRuleRow[]>([]);
   const [warning, setWarning] = useState<string | null>(null);
@@ -269,7 +273,7 @@ export function AlertsPage({ user }: { user: UserInfo }) {
     api.deleteAlertRule(id).then(load).catch((err) => setError({ message: String(err) }));
   };
 
-  if (loading) return <LoadingState message="正在加载告警与规则..." />;
+  if (loading) return <LoadingState message={t("alerts.loading")} />;
   if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
   return (
     <AlertsView

@@ -4,6 +4,7 @@ import type {
   ReadingQuality,
   Unit,
 } from "@lhm/protocol/types";
+import { localeToBcp47, translate, type Locale } from "./i18n.tsx";
 
 const UNIT_SYMBOLS: Record<Unit, string> = {
   celsius: "°C",
@@ -28,26 +29,27 @@ export function formatReadingValue(
   value: number | null | undefined,
   unit: Unit,
   quality: ReadingQuality = "valid",
+  locale: Locale = "zh",
 ): string {
   if (value === null || value === undefined || quality === "missing") {
-    return "— (无数据)";
+    return translate(locale, "fmt.noData");
   }
   if (quality === "sensor_fault") {
-    return "— (传感器故障)";
+    return translate(locale, "fmt.sensorFault");
   }
   if (unit === "byte") {
-    return formatBytes(value);
+    return formatBytes(value, locale);
   }
   if (unit === "hertz") {
-    return formatHertz(value);
+    return formatHertz(value, locale);
   }
   const symbol = UNIT_SYMBOLS[unit];
   const rounded = Number.isInteger(value) ? String(value) : value.toFixed(2);
   return symbol ? `${rounded} ${symbol}` : rounded;
 }
 
-export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes)) return "— (无数据)";
+export function formatBytes(bytes: number, locale: Locale = "zh"): string {
+  if (!Number.isFinite(bytes)) return translate(locale, "fmt.noData");
   if (bytes === 0) return "0 B";
   const units = ["B", "KiB", "MiB", "GiB", "TiB"];
   let idx = 0;
@@ -59,8 +61,8 @@ export function formatBytes(bytes: number): string {
   return `${val >= 100 || idx === 0 ? val.toFixed(0) : val.toFixed(2)} ${units[idx]}`;
 }
 
-export function formatHertz(hz: number): string {
-  if (!Number.isFinite(hz)) return "— (无数据)";
+export function formatHertz(hz: number, locale: Locale = "zh"): string {
+  if (!Number.isFinite(hz)) return translate(locale, "fmt.noData");
   if (hz === 0) return "0 Hz";
   if (hz >= 1_000_000_000) return `${(hz / 1_000_000_000).toFixed(2)} GHz`;
   if (hz >= 1_000_000) return `${(hz / 1_000_000).toFixed(0)} MHz`;
@@ -68,25 +70,37 @@ export function formatHertz(hz: number): string {
   return `${hz} Hz`;
 }
 
-/** Formats UTC RFC 3339 timestamps in the browser's local timezone. */
-export function formatLocalTime(iso: string | null | undefined): string {
+/** Formats UTC RFC 3339 timestamps in the browser's local timezone and active locale. */
+export function formatLocalTime(
+  iso: string | null | undefined,
+  locale: Locale = "zh",
+): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("zh-CN", { hour12: false });
+  return d.toLocaleString(localeToBcp47(locale), { hour12: false });
 }
 
-export function formatUptime(seconds: number | null | undefined): string {
+export function formatUptime(
+  seconds: number | null | undefined,
+  locale: Locale = "zh",
+): string {
   if (seconds === null || seconds === undefined) return "—";
   const days = Math.floor(seconds / 86400);
   const hrs = Math.floor((seconds % 86400) / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  if (days > 0) return `${days} 天 ${hrs} 小时 ${mins} 分`;
-  if (hrs > 0) return `${hrs} 小时 ${mins} 分`;
-  return `${mins} 分`;
+  const dUnit = translate(locale, "fmt.day");
+  const hUnit = translate(locale, "fmt.hour");
+  const mUnit = translate(locale, "fmt.min");
+  if (days > 0) return `${days} ${dUnit} ${hrs} ${hUnit} ${mins} ${mUnit}`;
+  if (hrs > 0) return `${hrs} ${hUnit} ${mins} ${mUnit}`;
+  return `${mins} ${mUnit}`;
 }
 
-export const CAPABILITY_LABELS: Record<CapabilityStatus, { label: string; tone: "ok" | "warn" | "muted" | "err" }> = {
+export const CAPABILITY_LABELS: Record<
+  CapabilityStatus,
+  { label: string; tone: "ok" | "warn" | "muted" | "err" }
+> = {
   supported: { label: "支持", tone: "ok" },
   unsupported: { label: "硬件不支持", tone: "muted" },
   permission_denied: { label: "权限不足", tone: "warn" },
@@ -94,14 +108,20 @@ export const CAPABILITY_LABELS: Record<CapabilityStatus, { label: string; tone: 
   unknown: { label: "未知", tone: "muted" },
 };
 
-export const DEVICE_STATUS_LABELS: Record<DeviceStatus, { label: string; tone: "ok" | "standby" | "err" | "muted" }> = {
+export const DEVICE_STATUS_LABELS: Record<
+  DeviceStatus,
+  { label: string; tone: "ok" | "standby" | "err" | "muted" }
+> = {
   online: { label: "在线", tone: "ok" },
   standby: { label: "待机（未唤醒）", tone: "standby" },
   offline: { label: "离线", tone: "err" },
   unknown: { label: "未知", tone: "muted" },
 };
 
-export const QUALITY_LABELS: Record<ReadingQuality, { label: string; tone: "ok" | "warn" | "err" | "muted" }> = {
+export const QUALITY_LABELS: Record<
+  ReadingQuality,
+  { label: string; tone: "ok" | "warn" | "err" | "muted" }
+> = {
   valid: { label: "有效", tone: "ok" },
   stale: { label: "数据过期", tone: "warn" },
   sensor_fault: { label: "传感器故障", tone: "err" },

@@ -1,24 +1,31 @@
 import type { WsConnectionState } from "../lib/ws.ts";
+import { useI18n } from "../lib/i18n.tsx";
 
-export function LoadingState({ message = "正在加载数据..." }: { message?: string }) {
+export function LoadingState({ message }: { message?: string }) {
+  const { t } = useI18n();
   return (
     <div className="panel" role="status" aria-busy="true">
-      <p style={{ margin: 0, color: "var(--text-muted)" }}>{message}</p>
+      <p style={{ margin: 0, color: "var(--text-muted)" }}>
+        {message ?? t("state.loading")}
+      </p>
     </div>
   );
 }
 
 export function EmptyState({
-  title = "暂无数据",
-  description = "当前主机未上报该类别数据或尚无历史采样。",
+  title,
+  description,
 }: {
   title?: string;
   description?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className="panel">
-      <h3 style={{ marginBottom: 4 }}>{title}</h3>
-      <p style={{ margin: 0, color: "var(--text-muted)" }}>{description}</p>
+      <h3 style={{ marginBottom: 4 }}>{title ?? t("state.emptyTitle")}</h3>
+      <p style={{ margin: 0, color: "var(--text-muted)" }}>
+        {description ?? t("state.emptyDesc")}
+      </p>
     </div>
   );
 }
@@ -32,16 +39,20 @@ export function ErrorState({
   message: string;
   onRetry?: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="banner banner-err" role="alert">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
-          <strong>请求失败{code ? ` (${code})` : ""}：</strong>
+          <strong>
+            {t("state.requestFailed")}
+            {code ? ` (${code})` : ""}:{" "}
+          </strong>
           <span>{message}</span>
         </div>
         {onRetry && (
           <button type="button" className="btn btn-secondary" onClick={onRetry}>
-            重试
+            {t("state.retry")}
           </button>
         )}
       </div>
@@ -56,27 +67,32 @@ export function PermissionDeniedNotice({
   subject: string;
   remediation?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className="banner banner-warn" role="note">
-      <strong>权限不足：</strong>
+      <strong>{t("state.permissionDenied")}</strong>
       <span>{subject}</span>
       {remediation ? (
-        <div style={{ marginTop: 4, opacity: 0.9 }}>建议：{remediation}</div>
+        <div style={{ marginTop: 4, opacity: 0.9 }}>
+          {t("state.suggestion")}
+          {remediation}
+        </div>
       ) : null}
     </div>
   );
 }
 
 export function WsStatusBanner({ state }: { state: WsConnectionState }) {
+  const { t } = useI18n();
   if (state === "connected") {
-    return <span className="badge badge-ok">实时推送已连接</span>;
+    return <span className="badge badge-ok">{t("ws.connected")}</span>;
   }
   if (state === "connecting") {
-    return <span className="badge badge-warn">实时推送连接中...</span>;
+    return <span className="badge badge-warn">{t("ws.connecting")}</span>;
   }
   return (
     <span className="badge badge-err" role="status">
-      实时推送已断开（数据可能不是最新）
+      {t("ws.disconnected")}
     </span>
   );
 }

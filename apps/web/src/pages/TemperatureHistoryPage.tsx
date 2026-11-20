@@ -7,21 +7,23 @@ import {
   type SensorRow,
 } from "../lib/api.ts";
 import { resolveTimeRange, type TimeRangeKey } from "../lib/format.ts";
+import { useI18n } from "../lib/i18n.tsx";
 import {
   TimeSeriesChart,
   type ChartSeriesInput,
 } from "../components/TimeSeriesChart.tsx";
 import { EmptyState, ErrorState, LoadingState } from "../components/States.tsx";
 
-const RANGE_OPTIONS: Array<{ key: TimeRangeKey; label: string }> = [
-  { key: "15m", label: "最近 15 分钟 (原始)" },
-  { key: "1h", label: "最近 1 小时 (原始)" },
-  { key: "6h", label: "最近 6 小时 (1分钟聚合)" },
-  { key: "24h", label: "最近 24 小时 (1分钟聚合)" },
-  { key: "7d", label: "最近 7 天 (1小时聚合)" },
+const RANGE_KEYS: Array<{ key: TimeRangeKey; labelKey: string }> = [
+  { key: "15m", labelKey: "history.range15m" },
+  { key: "1h", labelKey: "history.range1h" },
+  { key: "6h", labelKey: "history.range6h" },
+  { key: "24h", labelKey: "history.range24h" },
+  { key: "7d", labelKey: "history.range7d" },
 ];
 
 export function TemperatureHistoryPage() {
+  const { t } = useI18n();
   const [sensors, setSensors] = useState<SensorRow[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [range, setRange] = useState<TimeRangeKey>("1h");
@@ -91,13 +93,13 @@ export function TemperatureHistoryPage() {
       );
   }, [selectedIds, range, sensors]);
 
-  if (loading) return <LoadingState message="正在加载温度传感器列表..." />;
+  if (loading) return <LoadingState message={t("history.loading")} />;
   if (error) return <ErrorState code={error.code} message={error.message} />;
   if (sensors.length === 0) {
     return (
       <EmptyState
-        title="无可用温度传感器"
-        description="当前主机没有状态为 supported 的温度传感器。"
+        title={t("history.noSensors")}
+        description={t("history.noSensorsDesc")}
       />
     );
   }
@@ -114,7 +116,7 @@ export function TemperatureHistoryPage() {
   return (
     <div className="panel">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>温度历史曲线</h2>
+        <h2 style={{ margin: 0 }}>{t("history.title")}</h2>
         <div className="row">
           {primarySensorId && (
             <>
@@ -129,7 +131,7 @@ export function TemperatureHistoryPage() {
                 })}
                 download
               >
-                导出 CSV
+                {t("history.exportCsv")}
               </a>
               <a
                 className="btn btn-secondary"
@@ -142,18 +144,18 @@ export function TemperatureHistoryPage() {
                 })}
                 download
               >
-                导出 JSON
+                {t("history.exportJson")}
               </a>
             </>
           )}
           <select
-            aria-label="时间范围"
+            aria-label={t("history.rangeAria")}
             value={range}
             onChange={(e) => setRange(e.target.value as TimeRangeKey)}
           >
-            {RANGE_OPTIONS.map((o) => (
+            {RANGE_KEYS.map((o) => (
               <option key={o.key} value={o.key}>
-                {o.label}
+                {t(o.labelKey)}
               </option>
             ))}
           </select>
@@ -178,7 +180,7 @@ export function TemperatureHistoryPage() {
       </div>
 
       {series.every((s) => s.points.length === 0) ? (
-        <EmptyState title="所选时间范围内无采样点" description="请切换时间范围或等待 Agent 持续上报。" />
+        <EmptyState title={t("history.noPoints")} description={t("history.noPointsDesc")} />
       ) : (
         <TimeSeriesChart series={series} unitLabel="°C" height={340} />
       )}

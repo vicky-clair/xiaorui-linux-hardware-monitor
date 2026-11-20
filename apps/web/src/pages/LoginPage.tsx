@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { api, ApiClientError, type UserInfo } from "../lib/api.ts";
+import { LanguageSwitcher, useI18n } from "../lib/i18n.tsx";
 import { ErrorState } from "../components/States.tsx";
 
 export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInfo) => void }) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<"login" | "bootstrap">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -34,11 +36,12 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
   return (
     <div className="auth-shell">
       <div className="panel" style={{ width: "100%", maxWidth: 440 }}>
-        <h1 style={{ margin: "0 0 6px 0", fontSize: 20 }}>Linux Hardware Monitor</h1>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
+          <h1 style={{ margin: 0, fontSize: 20 }}>Linux Hardware Monitor</h1>
+          <LanguageSwitcher />
+        </div>
         <p style={{ margin: "0 0 16px 0", color: "var(--text-muted)", fontSize: 13 }}>
-          {mode === "login"
-            ? "请使用已配置账户登录硬件监控控制台。"
-            : "首次启动请使用 API 日志输出的一次性引导令牌创建管理员账户。"}
+          {mode === "login" ? t("login.descLogin") : t("login.descBootstrap")}
         </p>
 
         <div className="row" style={{ marginBottom: 14 }}>
@@ -47,14 +50,14 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
             className={`btn ${mode === "login" ? "" : "btn-secondary"}`}
             onClick={() => setMode("login")}
           >
-            账户登录
+            {t("login.tabLogin")}
           </button>
           <button
             type="button"
             className={`btn ${mode === "bootstrap" ? "" : "btn-secondary"}`}
             onClick={() => setMode("bootstrap")}
           >
-            初始化管理员
+            {t("login.tabBootstrap")}
           </button>
         </div>
 
@@ -63,18 +66,18 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
         <form className="form-grid" onSubmit={handleSubmit} style={{ marginTop: 12 }}>
           {mode === "bootstrap" && (
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span>一次性引导令牌（Bootstrap Token）</span>
+              <span>{t("login.bootstrapToken")}</span>
               <input
                 type="password"
                 required
                 value={bootstrapToken}
                 onChange={(e) => setBootstrapToken(e.target.value)}
-                placeholder="来自 lhm-api 启动日志"
+                placeholder={t("login.bootstrapPlaceholder")}
               />
             </label>
           )}
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span>用户名</span>
+            <span>{t("login.username")}</span>
             <input
               type="text"
               required
@@ -85,7 +88,7 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
             />
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span>密码（至少 10 位）</span>
+            <span>{t("login.password")}</span>
             <input
               type="password"
               required
@@ -95,7 +98,11 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
             />
           </label>
           <button type="submit" className="btn" disabled={submitting}>
-            {submitting ? "提交中..." : mode === "login" ? "登录" : "创建管理员并登录"}
+            {submitting
+              ? t("login.submitting")
+              : mode === "login"
+                ? t("login.submitLogin")
+                : t("login.submitBootstrap")}
           </button>
         </form>
       </div>

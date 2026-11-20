@@ -6,6 +6,7 @@ import {
   type StorageSmartDetail,
 } from "../lib/api.ts";
 import { formatLocalTime, formatReadingValue } from "../lib/format.ts";
+import { useI18n } from "../lib/i18n.tsx";
 import { DeviceStatusBadge } from "../components/StatusBadge.tsx";
 import { EmptyState, ErrorState, LoadingState } from "../components/States.tsx";
 
@@ -20,11 +21,12 @@ export function StorageView({
   selectedSmart: StorageSmartDetail | null;
   onSelect: (deviceId: string) => void;
 }) {
+  const { locale, t } = useI18n();
   if (items.length === 0) {
     return (
       <EmptyState
-        title={`${title}：未发现设备`}
-        description="当前主机未发现该类型的存储设备。"
+        title={`${title}${t("storage.emptySuffix")}`}
+        description={t("storage.emptyDesc")}
       />
     );
   }
@@ -37,15 +39,15 @@ export function StorageView({
           <table>
             <thead>
               <tr>
-                <th>设备</th>
-                <th>设备状态</th>
-                <th>协议</th>
-                <th>SMART 自检</th>
-                <th>温度</th>
-                <th>通电小时</th>
-                <th>读取数据单元 (128-bit)</th>
-                <th>写入数据单元 (128-bit)</th>
-                <th>操作</th>
+                <th>{t("th.device")}</th>
+                <th>{t("th.deviceStatus")}</th>
+                <th>{t("th.protocol")}</th>
+                <th>{t("th.smartSelfTest")}</th>
+                <th>{t("th.temperature")}</th>
+                <th>{t("th.powerOnHours")}</th>
+                <th>{t("th.dataUnitsRead")}</th>
+                <th>{t("th.dataUnitsWritten")}</th>
+                <th>{t("th.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -63,18 +65,18 @@ export function StorageView({
                   <td className="mono">{smart?.protocolType ?? "—"}</td>
                   <td>
                     {smart?.deviceStatus === "standby"
-                      ? "待机跳过（未唤醒）"
+                      ? t("storage.standbySkip")
                       : smart?.smartPassed === true
-                        ? "通过"
+                        ? t("storage.passed")
                         : smart?.smartPassed === false
-                          ? "未通过"
-                          : "— (无数据)"}
+                          ? t("storage.failed")
+                          : t("fmt.noData")}
                   </td>
                   <td className="mono">
                     {smart?.temperatureCelsius !== null &&
                     smart?.temperatureCelsius !== undefined
-                      ? formatReadingValue(smart.temperatureCelsius, "celsius", "valid")
-                      : "— (无数据)"}
+                      ? formatReadingValue(smart.temperatureCelsius, "celsius", "valid", locale)
+                      : t("fmt.noData")}
                   </td>
                   <td className="mono">{smart?.powerOnHours ?? "—"}</td>
                   <td className="mono">{smart?.dataUnitsRead ?? "—"}</td>
@@ -85,7 +87,7 @@ export function StorageView({
                       className="btn btn-secondary"
                       onClick={() => onSelect(device.deviceId)}
                     >
-                      SMART 详情
+                      {t("storage.smartDetailBtn")}
                     </button>
                   </td>
                 </tr>
@@ -97,15 +99,20 @@ export function StorageView({
 
       {selectedSmart && (
         <div className="panel">
-          <h3>SMART 原始属性：{selectedSmart.device.name}</h3>
+          <h3>
+            {t("storage.rawAttrTitle")}
+            {selectedSmart.device.name}
+          </h3>
           {!selectedSmart.latest ? (
             <p style={{ margin: 0, color: "var(--text-muted)" }}>
-              尚未收到该设备的 SMART 报告（若非 root 运行，请检查采集器诊断中的 SMART_PERMISSION_DENIED）。
+              {t("storage.noSmartReport")}
             </p>
           ) : selectedSmart.latest.attributes.length === 0 ? (
             <p style={{ margin: 0, color: "var(--text-muted)" }}>
-              最近采集时间：{formatLocalTime(selectedSmart.latest.collectedAt)}；当前状态：
-              {selectedSmart.latest.deviceStatus}，无 ATA 属性表。
+              {t("storage.lastCollectPrefix")}
+              {formatLocalTime(selectedSmart.latest.collectedAt, locale)}
+              {t("storage.currentStatusPrefix")}
+              {selectedSmart.latest.deviceStatus} ({t("storage.noAtaTable")})
             </p>
           ) : (
             <div className="table-wrap">
@@ -113,11 +120,11 @@ export function StorageView({
                 <thead>
                   <tr>
                     <th>ID</th>
-                    <th>属性名</th>
+                    <th>{t("th.attrName")}</th>
                     <th>Value</th>
                     <th>Worst</th>
                     <th>Threshold</th>
-                    <th>Raw Value (精确字符串)</th>
+                    <th>{t("th.rawValue")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -142,6 +149,7 @@ export function StorageView({
 }
 
 export function StoragePage({ nvmeOnly = false }: { nvmeOnly?: boolean }) {
+  const { t } = useI18n();
   const [items, setItems] = useState<StorageItem[]>([]);
   const [selected, setSelected] = useState<StorageSmartDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -188,11 +196,11 @@ export function StoragePage({ nvmeOnly = false }: { nvmeOnly?: boolean }) {
       );
   };
 
-  if (loading) return <LoadingState message="正在加载存储与 SMART 信息..." />;
+  if (loading) return <LoadingState message={t("storage.loading")} />;
   if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
   return (
     <StorageView
-      title={nvmeOnly ? "NVMe 监控" : "存储健康与 SMART"}
+      title={nvmeOnly ? t("storage.titleNvme") : t("storage.titleAll")}
       items={items}
       selectedSmart={selected}
       onSelect={handleSelect}

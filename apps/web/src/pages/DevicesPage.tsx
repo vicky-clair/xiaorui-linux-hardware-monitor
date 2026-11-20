@@ -6,10 +6,12 @@ import {
   type DeviceRow,
 } from "../lib/api.ts";
 import { formatLocalTime } from "../lib/format.ts";
+import { useI18n } from "../lib/i18n.tsx";
 import { CapabilityBadge, DeviceStatusBadge } from "../components/StatusBadge.tsx";
 import { EmptyState, ErrorState, LoadingState } from "../components/States.tsx";
 
 export function DevicesPage() {
+  const { locale, t } = useI18n();
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [detail, setDetail] = useState<DeviceDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,25 +48,25 @@ export function DevicesPage() {
       );
   };
 
-  if (loading) return <LoadingState message="正在加载硬件设备列表..." />;
+  if (loading) return <LoadingState message={t("devices.loading")} />;
   if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
-  if (devices.length === 0) return <EmptyState title="暂无已发现设备" />;
+  if (devices.length === 0) return <EmptyState title={t("devices.empty")} />;
 
   return (
     <>
       <div className="panel">
-        <h2>硬件设备列表</h2>
+        <h2>{t("devices.title")}</h2>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>稳定设备 ID</th>
-                <th>类型</th>
-                <th>名称 / 型号</th>
-                <th>厂商</th>
-                <th>状态</th>
-                <th>最近发现</th>
-                <th>操作</th>
+                <th>{t("th.stableDeviceId")}</th>
+                <th>{t("th.type")}</th>
+                <th>{t("th.nameModel")}</th>
+                <th>{t("th.vendor")}</th>
+                <th>{t("th.status")}</th>
+                <th>{t("th.lastSeen")}</th>
+                <th>{t("th.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -80,14 +82,14 @@ export function DevicesPage() {
                   <td>
                     <DeviceStatusBadge status={d.deviceStatus} />
                   </td>
-                  <td>{formatLocalTime(d.lastSeenAt)}</td>
+                  <td>{formatLocalTime(d.lastSeenAt, locale)}</td>
                   <td>
                     <button
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => inspect(d.deviceId)}
                     >
-                      身份详情
+                      {t("devices.inspectBtn")}
                     </button>
                   </td>
                 </tr>
@@ -99,7 +101,10 @@ export function DevicesPage() {
 
       {detail && (
         <div className="panel">
-          <h3>设备身份与拓扑：{detail.name}</h3>
+          <h3>
+            {t("devices.identityTitle")}
+            {detail.name}
+          </h3>
           <div className="mono" style={{ marginBottom: 12, color: "var(--text-muted)" }}>
             stable={String(detail.identity?.stable ?? false)} · driver=
             {detail.identity?.driver ?? "—"} · pci={detail.identity?.pciBusId ?? "—"} · wwn=
@@ -109,11 +114,11 @@ export function DevicesPage() {
             <table>
               <thead>
                 <tr>
-                  <th>传感器 ID</th>
-                  <th>名称</th>
-                  <th>类型</th>
-                  <th>单位</th>
-                  <th>能力状态</th>
+                  <th>{t("th.sensorId")}</th>
+                  <th>{t("th.name")}</th>
+                  <th>{t("th.type")}</th>
+                  <th>{t("th.unit")}</th>
+                  <th>{t("th.capability")}</th>
                 </tr>
               </thead>
               <tbody>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { SCHEMA_VERSION } from "@lhm/protocol/types";
 import { api, type UserInfo } from "./lib/api.ts";
 import { formatLocalTime, formatReadingValue } from "./lib/format.ts";
+import { LanguageSwitcher, useI18n } from "./lib/i18n.tsx";
 import { useRealtimeStream } from "./lib/ws.ts";
 import { LoadingState, WsStatusBanner } from "./components/States.tsx";
 import { AlertsPage } from "./pages/AlertsPage.tsx";
@@ -35,25 +36,26 @@ export type PageKey =
   | "diagnostics"
   | "config";
 
-const NAV_ITEMS: Array<{ key: PageKey; label: string }> = [
-  { key: "overview", label: "系统总览" },
-  { key: "cpu", label: "CPU 监控" },
-  { key: "gpu", label: "GPU 监控" },
-  { key: "motherboard", label: "主板传感器" },
-  { key: "memory", label: "内存监控" },
-  { key: "storage", label: "存储健康 / SMART" },
-  { key: "nvme", label: "NVMe 监控" },
-  { key: "temp-history", label: "温度历史" },
-  { key: "fans-voltage", label: "风扇与电压" },
-  { key: "alerts", label: "告警中心" },
-  { key: "analysis", label: "健康评分与分析" },
-  { key: "devices", label: "硬件设备列表" },
-  { key: "coverage", label: "传感器覆盖率" },
-  { key: "diagnostics", label: "采集器诊断" },
-  { key: "config", label: "系统配置" },
+const NAV_KEYS: PageKey[] = [
+  "overview",
+  "cpu",
+  "gpu",
+  "motherboard",
+  "memory",
+  "storage",
+  "nvme",
+  "temp-history",
+  "fans-voltage",
+  "alerts",
+  "analysis",
+  "devices",
+  "coverage",
+  "diagnostics",
+  "config",
 ];
 
 export function App() {
+  const { locale, t } = useI18n();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [page, setPage] = useState<PageKey>("overview");
@@ -71,7 +73,7 @@ export function App() {
   if (checkingAuth) {
     return (
       <div className="auth-shell">
-        <LoadingState message="正在检查登录状态..." />
+        <LoadingState message={t("shell.checkingAuth")} />
       </div>
     );
   }
@@ -95,14 +97,14 @@ export function App() {
           </div>
         </div>
         <ul className="nav-list">
-          {NAV_ITEMS.map((item) => (
-            <li key={item.key}>
+          {NAV_KEYS.map((key) => (
+            <li key={key}>
               <button
                 type="button"
-                className={`nav-btn ${page === item.key ? "active" : ""}`}
-                onClick={() => setPage(item.key)}
+                className={`nav-btn ${page === key ? "active" : ""}`}
+                onClick={() => setPage(key)}
               >
-                {item.label}
+                {t(`nav.${key}`)}
               </button>
             </li>
           ))}
@@ -115,16 +117,18 @@ export function App() {
             <WsStatusBanner state={stream.connectionState} />
             {stream.lastMessageAt && (
               <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                最近推送：{formatLocalTime(stream.lastMessageAt)}
+                {t("shell.lastPush")}
+                {formatLocalTime(stream.lastMessageAt, locale)}
               </span>
             )}
           </div>
           <div className="row">
+            <LanguageSwitcher />
             <span className="mono" style={{ color: "var(--text-muted)" }}>
               {user.username} ({user.role})
             </span>
             <button type="button" className="btn btn-secondary" onClick={handleLogout}>
-              退出登录
+              {t("shell.logout")}
             </button>
           </div>
         </header>
@@ -133,33 +137,37 @@ export function App() {
           {page === "overview" && <OverviewPage />}
           {page === "cpu" && (
             <SensorCategoryPage
-              title="CPU 监控"
+              categoryKey="cpu"
+              title={t("nav.cpu")}
               deviceTypes={["cpu"]}
-              emptyDescription="未发现 CPU 传感器。"
+              emptyDescription={t("empty.cpu")}
               liveReadings={stream.latestBySensor}
             />
           )}
           {page === "gpu" && (
             <SensorCategoryPage
-              title="GPU 监控"
+              categoryKey="gpu"
+              title={t("nav.gpu")}
               deviceTypes={["gpu"]}
-              emptyDescription="当前主机未发现 GPU 设备或 DRM 接口。"
+              emptyDescription={t("empty.gpu")}
               liveReadings={stream.latestBySensor}
             />
           )}
           {page === "motherboard" && (
             <SensorCategoryPage
-              title="主板传感器"
+              categoryKey="motherboard"
+              title={t("nav.motherboard")}
               deviceTypes={["motherboard", "system"]}
-              emptyDescription="未发现主板 hwmon 或 thermal 传感器。"
+              emptyDescription={t("empty.motherboard")}
               liveReadings={stream.latestBySensor}
             />
           )}
           {page === "memory" && (
             <SensorCategoryPage
-              title="内存监控"
+              categoryKey="memory"
+              title={t("nav.memory")}
               deviceTypes={["memory"]}
-              emptyDescription="未发现内存监控数据。"
+              emptyDescription={t("empty.memory")}
               liveReadings={stream.latestBySensor}
             />
           )}
@@ -168,9 +176,10 @@ export function App() {
           {page === "temp-history" && <TemperatureHistoryPage />}
           {page === "fans-voltage" && (
             <SensorCategoryPage
-              title="风扇与电压"
+              categoryKey="fans-voltage"
+              title={t("nav.fans-voltage")}
               sensorTypes={["fan_speed", "voltage", "power", "current"]}
-              emptyDescription="当前主机未暴露风扇转速、电压或功耗传感器（部分平台无 Super I/O 或电源遥测）。"
+              emptyDescription={t("empty.fansVoltage")}
               liveReadings={stream.latestBySensor}
             />
           )}
