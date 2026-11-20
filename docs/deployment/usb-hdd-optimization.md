@@ -1,7 +1,7 @@
-# Linux 外接 USB 移动机械硬盘连接与防磨损优化指南（Debian 13）
+# Linux 双磁盘长期健康与防磨损优化指南（Debian 13：外接 USB 机械盘 + 系统盘 SSD）
 
-> 适用环境：Debian 13（Linux 6.12+）宿主机通过 USB 3.0 硬盘盒长期挂载 2.5 寸机械硬盘（例如 Emby / Jellyfin 媒体库或备份盘）。
-> 本文记录了 2026-11-20 在实机完成的**方案 A** 完整诊断依据、具体宿主机改动、验收命令、后续观察要点及一键回滚方式，方便日后查阅或重装系统时快速复用。
+> 适用环境：Debian 13（Linux 6.12+）宿主机，包含系统盘 M.2 SATA SSD（`/dev/sda`）与长期挂载的 USB 3.0 移动机械硬盘（`/dev/sdb`，例如 Emby 媒体库）。
+> 本文完整记录 2026-11-20 至 2026-11-21 在实机完成并经 **10 小时跨夜复查验证** 的外接盘 **方案 A** 与系统盘 **SSD 延寿基础包（项 1–2）** 全部宿主机改动、验收命令、实测数据及一键回滚方式，方便日后查阅或重装系统时快速复用。
 
 ---
 
@@ -109,15 +109,18 @@ sudo smartctl -g apm /dev/sdb
 sudo smartctl -A /dev/sdb | awk '$1 ~ /^(4|5|9|193|194|197|198|199)$/'
 ```
 
-2026-11-20 实机验收对照：
+2026-11-20 实机验收与 2026-11-21 **10 小时跨夜复查**对照：
 
-| 检查项 | 优化前 | 优化后实测 |
-| ---- | ---- | ---- |
-| 挂载方式 | `/dev/sdb1`（`relatime`） | `UUID=D8B2FD20B2FD0432`（`noatime,big_writes,nofail`） |
-| USB 自动挂起 | 未锁定 | `power/control = on`（`udev` 持久化锁定） |
-| `read_ahead_kb` | `128` | **`1024`** |
-| `APM level` | `128` | **`254 (maximum performance)`** |
-| 服务状态 | `emby-server` / `lhm-agent` 运行 | 全部 `active`，`/media/usb` 属主保持 `emby:emby` |
+| 检查项 | 优化前 | 优化后即时实测 | 10 小时跨夜复查（2026-11-21 07:33） |
+| ---- | ---- | ---- | ---- |
+| 挂载方式 | `/dev/sdb1`（`relatime`） | `UUID=D8B2FD20B2FD0432`（`noatime,big_writes,nofail`） | 持续稳定生效 |
+| USB 自动挂起 | 未锁定 | `power/control = on`（`udev` 持久化锁定） | 持续保持 `on` |
+| `read_ahead_kb` | `128` | **`1024`** | 持续保持 `1024` |
+| `APM level` | `128` | **`254 (maximum performance)`** | **跨夜休眠后仍稳稳保持 `254`** |
+| `193 Load_Cycle_Count` | `242,362`（**17.2 次/小时**） | `242,365` | `242,388`（10 小时仅 +23 次 ≈ **2.3 次/小时，暴降 86%**，且与 `Start_Stop` +23 次一一对应，运行期零无效归位） |
+| `194 温度` | `46 °C`（最高 `52 °C`） | `39 °C` | **`34 °C`** |
+| `199 UDMA_CRC` | `72` | `72` | **`72`（零增长）** |
+| 服务状态 | `emby-server` / `lhm-agent` 运行 | 全部 `active` | 全部 `active`，`/media/usb` 属主保持 `emby:emby` |
 
 ---
 
@@ -135,9 +138,87 @@ sudo smartctl -A /dev/sdb | awk '$1 ~ /^(4|5|9|193|194|197|198|199)$/'
 
 ---
 
-## 6. 一键回滚方案
+## 6. 系统盘 SSD（`/dev/sda`，256 GB M.2 SATA）长期延寿优化
 
-如需完全恢复本次磁盘连接与挂载修改，在 Debian 13 宿主机执行：
+针对 24/7 运行多容器的 256 GB 消费级 SSD（`SCY SNM4T1G25600D`，已通电 18,145 小时、`fstrim.timer` 已启用），已落地以下**零中断**减写与空间优化：
+
+### 6.1 限制 `systemd-journald` 日志体积（释放 ~3.9 GB）
+
+新增独立 drop-in 配置 `/etc/systemd/journald.conf.d/99-ssd-longevity.conf`（权限 `0644`）：
+
+```ini
+[Journal]
+SystemMaxUse=200M
+RuntimeMaxUse=50M
+MaxRetentionSec=14day
+```
+
+生效与清理命令：
+
+```bash
+sudo systemctl restart systemd-journald
+sudo journalctl --vacuum-size=200M
+sudo du -sh /var/log/journal
+```
+
+实测效果：`/var/log/journal` 从 **`4.1 GB` 降至 `178 MB`**。
+
+### 6.2 降低 SSD Swap 写入与合并脏页回写
+
+新增 `/etc/sysctl.d/99-ssd-longevity.conf`（权限 `0644`）：
+
+```ini
+# 降低向 SSD (/dev/sda3) 积极换出的倾向，并适度拉长脏页回写合并周期
+vm.swappiness = 10
+vm.dirty_writeback_centisecs = 1500
+```
+
+生效与验证命令：
+
+```bash
+sudo sysctl -p /etc/sysctl.d/99-ssd-longevity.conf
+```
+
+实测效果：`vm.swappiness` 从 `60` 降至 `10`，Swap 占用从 `3.0 GiB` 自然回落至 `2.8 GiB`。
+
+### 6.3 根分区 `/` 启用 `noatime` 并热生效
+
+修改前备份 `/etc/fstab` 至 `/etc/fstab.bak-20261120-root`，变更差异：
+
+```diff
+-UUID=473269c3-80e7-4e69-b744-3409fec214c7 /               ext4    errors=remount-ro 0       1
++UUID=473269c3-80e7-4e69-b744-3409fec214c7 /               ext4    noatime,errors=remount-ro 0       1
+```
+
+无中断热挂载并验证：
+
+```bash
+sudo systemctl daemon-reload
+sudo mount -o remount,noatime /
+findmnt -o SOURCE,TARGET,FSTYPE,OPTIONS /
+# 预期：/dev/sda2 / ext4 rw,noatime,errors=remount-ro
+```
+
+### 6.4 清理 Docker 闲置构建缓存（为 SSD 留出磨损均衡空间）
+
+```bash
+docker builder prune -f
+df -h /
+```
+
+实测效果：单次回收 **`32.51 GB`** 闲置构建缓存（未删除任何容器、镜像和数据卷）；叠加日志清理后，`/dev/sda2` 使用率从 **`65%`（已用 137G / 可用 77G）降至 `46%`（已用 98G / 可用 116G）**，为 SSD 控制器留出超过 50% 的可用余量以降低写放大（WAF）。
+
+### 6.5 SSD 进一步可选优化建议（按需启用）
+
+- **排查异常重启容器**：若发现容器处于无限 `restarting` 状态且未配置 Docker 日志上限，会持续高频刷写 `*-json.log` 并推高温度，建议定期用 `docker ps -a` 与 `docker system df` 巡检。
+- **配置 Docker 全局日志上限**：可在维护窗口为 `/etc/docker/daemon.json` 增加 `"log-driver": "json-file"` 及 `"log-opts": { "max-size": "20m", "max-file": "3" }`（需重启 Docker 服务，且仅对新建容器生效）。
+- **启用 `zram` 压缩内存交换**：若 7.5 GiB 内存长期运行大量容器导致 Swap 再次增长，可安装 `zram-tools` 让交换优先在内存中压缩完成，进一步减少 `/dev/sda3` 闪存擦写。
+
+---
+
+## 7. 一键回滚方案
+
+### 7.1 回滚外接 USB 移动硬盘（`/dev/sdb`）优化
 
 ```bash
 sudo cp -a /etc/fstab.bak-20261120 /etc/fstab
@@ -146,4 +227,16 @@ sudo udevadm control --reload-rules
 sudo systemctl daemon-reload
 # 如需立即恢复原挂载参数（空闲时执行）：
 sudo fuser -m /media/usb || (sudo umount /media/usb && sudo mount /media/usb)
+```
+
+### 7.2 回滚系统盘 SSD（`/dev/sda`）配置优化
+
+```bash
+sudo rm -f /etc/systemd/journald.conf.d/99-ssd-longevity.conf
+sudo systemctl restart systemd-journald
+sudo rm -f /etc/sysctl.d/99-ssd-longevity.conf
+sudo sysctl -w vm.swappiness=60 vm.dirty_writeback_centisecs=500
+sudo cp -a /etc/fstab.bak-20261120-root /etc/fstab
+sudo systemctl daemon-reload
+sudo mount -o remount,relatime /
 ```
