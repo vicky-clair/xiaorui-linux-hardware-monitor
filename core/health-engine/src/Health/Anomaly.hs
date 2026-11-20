@@ -1,5 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | 硬件时序异常检测纯函数模块（阶段 4 + 阶段 6 增强）：
+-- 1. 鲁棒 MAD（中位数绝对偏差）修正 Z-Score：抗历史单点离群值污染；
+-- 2. 经典均值/标准差 Z-Score 兜底；
+-- 3. 单步突变检测（|latest - prev| >= 12.0）：快速捕捉散热风扇停转等突发升温。
 module Health.Anomaly
   ( detectAnomalies
   ) where

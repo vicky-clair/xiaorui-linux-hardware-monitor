@@ -1,3 +1,10 @@
+//! 外部硬件工具安全执行器（ADR-0006 / AGENTS.md §2）。
+//!
+//! 强制安全边界：
+//! - 仅允许执行绝对路径白名单中的二进制（`smartctl` / `nvme` / `nvidia-smi`）；
+//! - 严禁通过 Shell 拼接命令，一律使用参数数组直接 `exec`；
+//! - 强制超时终止与 2 MiB 输出字节上限，防止异常输出拖垮宿主机内存。
+
 use crate::collector::BoxFuture;
 use std::collections::BTreeMap;
 use std::fmt;

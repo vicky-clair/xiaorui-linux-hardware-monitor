@@ -1,3 +1,8 @@
+/**
+ * 阶段 6 告警 Webhook 异步通知分发器：
+ * 内置 SSRF 目标地址校验（阻断 169.254.0.0/16 云元数据、非 http/https 协议及内嵌凭据 URL）、
+ * 可选 HMAC-SHA256 签名（X-LHM-Signature）、5 秒超时限制与敏感密钥脱敏存储（is_sensitive=1）。
+ */
 import { createHmac } from "node:crypto";
 import type { AlertTransitionRecord } from "@lhm/protocol";
 import type { AuthRepository } from "../repositories/authRepo.ts";

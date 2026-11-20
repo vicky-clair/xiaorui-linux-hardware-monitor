@@ -68,45 +68,65 @@ export function AnalysisView({
               </tr>
             </thead>
             <tbody>
-              {results.map((r) => (
-                <tr key={r.id}>
-                  <td className="mono">{r.device_id}</td>
-                  <td>{severityBadge(r.severity)}</td>
-                  <td className="mono" style={{ fontWeight: 600 }}>
-                    {r.score !== null ? `${r.score.toFixed(1)} / 100` : t("analysis.unscorable")}
-                  </td>
-                  <td>{translateTrend(locale, r.trend)}</td>
-                  <td>{translateThresholdSource(locale, r.threshold_source)}</td>
-                  <td>
-                    {r.factors.map((f, idx) => (
-                      <div key={idx} style={{ fontSize: 12 }}>
-                        <span className="mono">
-                          [{f.metric} {f.delta >= 0 ? `+${f.delta}` : f.delta}]
-                        </span>{" "}
-                        {translateAnalysisText(locale, f.reason)}
+              {results.map((r) => {
+                const rowClass =
+                  r.severity === "critical"
+                    ? "row-critical"
+                    : r.severity === "warning"
+                      ? "row-warning"
+                      : undefined;
+                const scoreClass =
+                  r.severity === "critical"
+                    ? "mono text-danger"
+                    : r.severity === "warning"
+                      ? "mono text-warn"
+                      : "mono";
+                return (
+                  <tr key={r.id} className={rowClass}>
+                    <td className={r.severity === "critical" ? "mono text-danger" : "mono"}>
+                      {r.device_id}
+                    </td>
+                    <td>{severityBadge(r.severity)}</td>
+                    <td className={scoreClass} style={{ fontWeight: 700 }}>
+                      {r.score !== null ? `${r.score.toFixed(1)} / 100` : t("analysis.unscorable")}
+                    </td>
+                    <td>{translateTrend(locale, r.trend)}</td>
+                    <td>{translateThresholdSource(locale, r.threshold_source)}</td>
+                    <td>
+                      {r.factors.map((f, idx) => (
+                        <div
+                          key={idx}
+                          style={{ fontSize: 12 }}
+                          className={f.delta <= -40 ? "text-danger" : f.delta < 0 ? "text-warn" : undefined}
+                        >
+                          <span className="mono">
+                            [{f.metric} {f.delta >= 0 ? `+${f.delta}` : f.delta}]
+                          </span>{" "}
+                          {translateAnalysisText(locale, f.reason)}
+                        </div>
+                      ))}
+                      {r.anomalies.map((a, idx) => (
+                        <div key={`a-${idx}`} style={{ fontSize: 12, color: "#fcd34d" }}>
+                          {t("analysis.anomalyPrefix")} {a.code}:{" "}
+                          {translateAnalysisText(locale, a.reason)}
+                        </div>
+                      ))}
+                      {r.correlations.map((c, idx) => (
+                        <div key={`c-${idx}`} style={{ fontSize: 12, color: "#fca5a5" }}>
+                          {t("analysis.correlationPrefix")} {c.code}:{" "}
+                          {translateAnalysisText(locale, c.summary)}
+                        </div>
+                      ))}
+                    </td>
+                    <td style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                      <div className="mono">
+                        engine={r.engine_version} · {r.rule_version}
                       </div>
-                    ))}
-                    {r.anomalies.map((a, idx) => (
-                      <div key={`a-${idx}`} style={{ fontSize: 12, color: "#fcd34d" }}>
-                        {t("analysis.anomalyPrefix")} {a.code}:{" "}
-                        {translateAnalysisText(locale, a.reason)}
-                      </div>
-                    ))}
-                    {r.correlations.map((c, idx) => (
-                      <div key={`c-${idx}`} style={{ fontSize: 12, color: "#fca5a5" }}>
-                        {t("analysis.correlationPrefix")} {c.code}:{" "}
-                        {translateAnalysisText(locale, c.summary)}
-                      </div>
-                    ))}
-                  </td>
-                  <td style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    <div className="mono">
-                      engine={r.engine_version} · {r.rule_version}
-                    </div>
-                    <div>{formatLocalTime(r.analyzed_at, locale)}</div>
-                  </td>
-                </tr>
-              ))}
+                      <div>{formatLocalTime(r.analyzed_at, locale)}</div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

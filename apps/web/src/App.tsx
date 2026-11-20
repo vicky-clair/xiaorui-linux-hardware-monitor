@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+// 控制台根组件：负责登录鉴权状态、左侧导航、WebSocket 实时流、全局红/橙色告警提示与页面路由。
+// 严格遵循架构约束：前端仅展示后端 API 与 Haskell 引擎下发的状态，绝不在前端推断硬件健康。
+import { useCallback, useEffect, useState } from "react";
 import { SCHEMA_VERSION } from "@lhm/protocol/types";
-import { api, type UserInfo } from "./lib/api.ts";
+import { api, type AlertRow, type AnalysisRow, type UserInfo } from "./lib/api.ts";
 import { formatLocalTime, formatReadingValue } from "./lib/format.ts";
 import { LanguageSwitcher, useI18n } from "./lib/i18n.tsx";
 import { useRealtimeStream } from "./lib/ws.ts";
@@ -54,11 +56,83 @@ const NAV_KEYS: PageKey[] = [
   "config",
 ];
 
+/** 全局顶部红/橙色健康与告警横幅（仅按后端返回结果渲染，供任意页面实时可见） */
+export function GlobalAlertBanner({
+  alerts,
+  analysis,
+  onNavigate,
+}: {
+  alerts: AlertRow[];
+  analysis: AnalysisRow[];
+  onNavigate: (page: PageKey) => void;
+}) {
+  const { t } = useI18n();
+  const firingAlerts = alerts.filter((a) => a.status === "firing");
+  const criticalDevices = analysis.filter((r) => r.severity === "critical");
+  const warningDevices = analysis.filter((r) => r.severity === "warning");
+
+  if (firingAlerts.length === 0 && criticalDevices.length === 0 && warningDevices.length === 0) {
+    return null;
+  }
+
+  const isCritical = firingAlerts.length > 0 || criticalDevices.length > 0;
+  const parts: string[] = [];
+  if (firingAlerts.length > 0) {
+    parts.push(`${firingAlerts.length} ${t("shell.globalAlertFiringCount")}`);
+  }
+  if (criticalDevices.length > 0) {
+    parts.push(`${criticalDevices.length} ${t("shell.globalAlertCritDevCount")}`);
+  }
+  if (warningDevices.length > 0) {
+    parts.push(`${warningDevices.length} ${t("shell.globalAlertWarnDevCount")}`);
+  }
+
+  return (
+    <div
+      className={`banner ${isCritical ? "banner-err" : "banner-warn"} alert-banner-global`}
+      role="alert"
+    >
+      <div>
+        {isCritical && <span className="pulse-dot" aria-hidden="true" />}
+        <strong>
+          {isCritical ? t("shell.globalAlertCritical") : t("shell.globalAlertWarning")}
+        </strong>
+        <span>{parts.join(" · ")}</span>
+        {firingAlerts[0] && (
+          <span className="mono" style={{ marginLeft: 10 }}>
+            [{firingAlerts[0].device_id}] {firingAlerts[0].summary}
+          </span>
+        )}
+      </div>
+      <div className="row">
+        {firingAlerts.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => onNavigate("alerts")}
+          >
+            {t("shell.viewAlerts")}
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => onNavigate("analysis")}
+        >
+          {t("shell.viewAnalysis")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   const { locale, t } = useI18n();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [page, setPage] = useState<PageKey>("overview");
+  const [alerts, setAlerts] = useState<AlertRow[]>([]);
+  const [analysis, setAnalysis] = useState<AnalysisRow[]>([]);
 
   useEffect(() => {
     api
@@ -69,6 +143,28 @@ export function App() {
   }, []);
 
   const stream = useRealtimeStream(user !== null);
+
+  // 定期拉取告警与最新 Haskell 分析摘要（每 30s），用于全局红色横幅与侧边栏计数角标
+  const refreshGlobalStatus = useCallback(() => {
+    if (!user) return;
+    Promise.all([api.alerts().catch(() => null), api.analysis().catch(() => null)]).then(
+      ([aRes, anRes]) => {
+        if (aRes) setAlerts(aRes.alerts);
+        if (anRes) setAnalysis(anRes.results);
+      },
+    );
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setAlerts([]);
+      setAnalysis([]);
+      return;
+    }
+    refreshGlobalStatus();
+    const timer = window.setInterval(refreshGlobalStatus, 30_000);
+    return () => window.clearInterval(timer);
+  }, [user, refreshGlobalStatus]);
 
   if (checkingAuth) {
     return (
@@ -87,6 +183,12 @@ export function App() {
     setUser(null);
   };
 
+  const firingCount = alerts.filter((a) => a.status === "firing").length;
+  const unhealthyCount = analysis.filter(
+    (r) => r.severity === "critical" || r.severity === "warning",
+  ).length;
+  const hasCritical = analysis.some((r) => r.severity === "critical");
+
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -104,7 +206,15 @@ export function App() {
                 className={`nav-btn ${page === key ? "active" : ""}`}
                 onClick={() => setPage(key)}
               >
-                {t(`nav.${key}`)}
+                <span>{t(`nav.${key}`)}</span>
+                {key === "alerts" && firingCount > 0 && (
+                  <span className="nav-badge-err">{firingCount}</span>
+                )}
+                {key === "analysis" && unhealthyCount > 0 && (
+                  <span className={hasCritical ? "nav-badge-err" : "nav-badge-warn"}>
+                    {unhealthyCount}
+                  </span>
+                )}
               </button>
             </li>
           ))}
@@ -134,6 +244,8 @@ export function App() {
         </header>
 
         <main className="content">
+          <GlobalAlertBanner alerts={alerts} analysis={analysis} onNavigate={setPage} />
+
           {page === "overview" && <OverviewPage />}
           {page === "cpu" && (
             <SensorCategoryPage

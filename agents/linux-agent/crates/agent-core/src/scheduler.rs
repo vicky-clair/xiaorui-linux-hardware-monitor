@@ -1,3 +1,8 @@
+//! 采集调度器（`AgentRunner`）：
+//! - 故障隔离：每个采集器的发现与采集任务均在独立 tokio 任务与超时边界内执行，单个采集器超时或 panic 绝不导致 Agent 退出；
+//! - 低开销分级调度（`run_tick`）：缓存硬件发现结果（默认 60s），严格按单任务周期执行，权限不足任务自动退避至 300s；
+//! - 时钟保护：检测系统墙钟回拨并输出结构化诊断，不影响单调时钟调度周期。
+
 use crate::collector::{CollectResult, CollectionTask, Collector, CollectorContext};
 use crate::coverage::{CoverageReport, build_coverage_report};
 use crate::utc_now_rfc3339;

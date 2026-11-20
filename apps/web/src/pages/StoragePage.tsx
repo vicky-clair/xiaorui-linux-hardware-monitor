@@ -64,13 +64,15 @@ export function StorageView({
                   </td>
                   <td className="mono">{smart?.protocolType ?? "—"}</td>
                   <td>
-                    {smart?.deviceStatus === "standby"
-                      ? t("storage.standbySkip")
-                      : smart?.smartPassed === true
-                        ? t("storage.passed")
-                        : smart?.smartPassed === false
-                          ? t("storage.failed")
-                          : t("fmt.noData")}
+                    {smart?.deviceStatus === "standby" ? (
+                      t("storage.standbySkip")
+                    ) : smart?.smartPassed === true ? (
+                      <span className="badge badge-ok">{t("storage.passed")}</span>
+                    ) : smart?.smartPassed === false ? (
+                      <span className="badge badge-err text-danger">{t("storage.failed")}</span>
+                    ) : (
+                      t("fmt.noData")
+                    )}
                   </td>
                   <td className="mono">
                     {smart?.temperatureCelsius !== null &&

@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | 确定性纯函数告警状态机（ADR-0007）：
+-- 状态流转：Ok -> Pending（满足阈值且持续时间 > 0）-> Firing（达到持续时长）-> Resolved（恢复并满足 5% 滞回防抖边界）。
+-- 缺失/过期/故障采样不会误触发新告警，也不会误解除已激活告警。
 module Health.StateMachine
   ( stepAlertState
   , parseIsoUtc

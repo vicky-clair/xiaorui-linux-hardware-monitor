@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | 四级阈值优先级解析模块：
+-- 1. 用户单设备自定义规则 > 2. 硬件驱动暴露的 max/crit 限值 > 3. 通用保守默认阈值 > 4. 不可用（绝不凭空编造阈值）。
 module Health.Thresholds
   ( ResolvedThreshold (..)
   , resolveThreshold

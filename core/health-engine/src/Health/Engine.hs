@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | 健康分析顶层纯函数编排模块（ADR-0004 / ADR-0007）。
+-- 串联趋势分析（Trends）、异常检测（Anomaly）、多指标关联（Correlation）、
+-- 阈值解析（Thresholds）、告警状态机（StateMachine）与可解释评分（Scoring）。
 module Health.Engine
   ( evaluateReadingQuality
   , analyze

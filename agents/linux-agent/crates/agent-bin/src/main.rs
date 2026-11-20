@@ -1,3 +1,10 @@
+//! Linux Hardware Monitor 原生宿主机采集 Agent（`lhm-agent`）入口。
+//!
+//! 职责边界（AGENTS.md §4）：
+//! - 仅负责宿主机硬件发现、传感器采集、数据标准化、本地诊断与 Unix Domain Socket 上报；
+//! - 严禁直接访问 SQLite 或承担 Web/用户认证业务；
+//! - 支持三种运行模式：`--once`（单次输出 JSON 快照）、`--send-once`（单次经 IPC 上报）、常驻分级调度模式。
+
 use agent_collectors::default_collectors;
 use agent_core::agent_info;
 use agent_core::collector::CollectorContext;

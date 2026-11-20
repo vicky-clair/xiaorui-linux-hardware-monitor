@@ -1,3 +1,8 @@
+/**
+ * Haskell 无状态健康分析引擎 HTTP 客户端（ADR-0004）。
+ * 组装设备/传感器最新读数、15 分钟历史窗口、告警规则与上一轮状态快照发送至 POST /v1/analyze；
+ * 若引擎超时或不可达，严格降级为 severity="unknown"、score=null 并写入 HEALTH_ENGINE_UNAVAILABLE 诊断，绝不伪造正常。
+ */
 import {
   createProtocolValidator,
   type AnalyzeRequest,

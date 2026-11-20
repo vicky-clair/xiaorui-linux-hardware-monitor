@@ -15,6 +15,7 @@ import {
 import { buildTimeSeriesOption } from "./components/TimeSeriesChart.tsx";
 import { formatReadingValue, resolveTimeRange } from "./lib/format.ts";
 import { I18nProvider, translateAnalysisText, translateDiagnostic } from "./lib/i18n.tsx";
+import { GlobalAlertBanner } from "./App.tsx";
 import { AlertsView } from "./pages/AlertsPage.tsx";
 import { AnalysisView } from "./pages/AnalysisPage.tsx";
 import { ConfigView } from "./pages/ConfigPage.tsx";
@@ -313,5 +314,32 @@ describe("Core page rendering", () => {
     );
     expect(jaHtml).toContain("初期管理者作成");
     expect(jaHtml).toContain("ログイン");
+
+    const bannerHtml = renderToStaticMarkup(
+      <I18nProvider initialLocale="zh">
+        <GlobalAlertBanner
+          alerts={[
+            {
+              alert_id: "alt-crit",
+              host_id: "host-1",
+              device_id: "cpu-system-0",
+              rule_id: "cpu-temp-crit",
+              severity: "critical",
+              status: "firing",
+              summary: "temperature reached 92",
+              triggered_at: "2026-11-20T10:00:00Z",
+              acknowledged_at: null,
+              acknowledged_by: null,
+              resolved_at: null,
+            },
+          ]}
+          analysis={[]}
+          onNavigate={() => {}}
+        />
+      </I18nProvider>,
+    );
+    expect(bannerHtml).toContain("banner-err");
+    expect(bannerHtml).toContain("硬件告警触发中");
+    expect(bannerHtml).toContain("cpu-system-0");
   });
 });

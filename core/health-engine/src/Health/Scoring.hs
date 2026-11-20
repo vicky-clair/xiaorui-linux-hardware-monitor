@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | 可解释设备健康评分模块（0..100 或 Nothing）。
+-- 核心数据红线：待机硬盘不扣分、数据过期绝不判为 Normal、传感器故障绝不当作硬件损坏、每个扣分项均附带明确依据。
 module Health.Scoring
   ( scoreDevice
   ) where

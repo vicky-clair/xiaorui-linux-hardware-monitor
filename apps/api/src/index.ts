@@ -1,3 +1,9 @@
+/**
+ * Bun API 服务启动入口（唯一 SQLite 写入者，AGENTS.md §4）。
+ * 启动流程：初始化 SQLite WAL 与自动迁移 -> 首次无用户时生成一次性 bootstrap_token ->
+ * 监听 Unix Domain Socket 接收 Rust Agent 数据 -> 启动 60 秒聚合/健康分析与每小时保留清理定时器 ->
+ * 启动 Elysia HTTP / WebSocket 服务并监听 SIGINT/SIGTERM 优雅关机。
+ */
 import { createAppRuntime } from "./app.ts";
 import { startUnixIpcServer, type UnixIpcServerHandle } from "./ipc/unixServer.ts";
 

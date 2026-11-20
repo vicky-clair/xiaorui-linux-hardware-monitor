@@ -1,4 +1,9 @@
-/// Normalizes an arbitrary hardware identifier fragment into lowercase `[a-z0-9-]`.
+//! 硬件设备与传感器稳定 ID 生成模块（AGENTS.md §7）。
+//!
+//! 严格使用 PCI BDF、磁盘 WWN/序列号或拓扑路径生成可跨重启复现的稳定 ID（如 `gpu-pci-0000-00-02-0`），
+//! 禁止使用 `hwmon3`、`gpu-001` 等会随启动顺序漂移的临时编号。
+
+/// 将任意硬件标识片段规整为小写 `[a-z0-9-]`。
 pub fn normalize_slug(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
     let mut prev_dash = false;

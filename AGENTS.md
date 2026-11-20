@@ -130,6 +130,7 @@ tests/             integration/、fixtures/、hardware-simulation/、protocol/
 
 | 主题 | 文档 |
 | ---- | ---- |
+| 开发者完整指南 | [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) |
 | 当前阶段与验收 | [docs/status.md](docs/status.md) |
 | 总体架构 / 版本矩阵 | [docs/architecture/overview.md](docs/architecture/overview.md)、[versions.md](docs/architecture/versions.md) |
 | 健康分析引擎 | [docs/architecture/health-engine.md](docs/architecture/health-engine.md) |

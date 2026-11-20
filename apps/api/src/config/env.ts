@@ -1,3 +1,8 @@
+/**
+ * API 环境变量配置加载模块：
+ * 所有端口、SQLite 路径、Unix Socket 路径、Allowed Origins、Cookie Secure 开关、
+ * 数据保留天数与 Haskell 引擎超时时间均在此集中解析并提供安全默认值。
+ */
 export interface ApiConfig {
   host: string;
   port: number;

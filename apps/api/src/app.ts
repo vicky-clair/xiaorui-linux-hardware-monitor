@@ -1,3 +1,8 @@
+/**
+ * Elysia 应用装配与依赖注入容器：
+ * 统一挂载健康检查、认证与用户管理、遥测与 WebSocket、健康分析与告警、阶段 6 导出与 Webhook 路由，
+ * 并统一封装 404/500 标准响应信封。
+ */
 import { Elysia } from "elysia";
 import { AuthService } from "./auth/service.ts";
 import { loadConfig, type ApiConfig } from "./config/env.ts";

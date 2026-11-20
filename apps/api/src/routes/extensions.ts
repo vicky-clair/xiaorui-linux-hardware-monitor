@@ -1,3 +1,9 @@
+/**
+ * 阶段 6 扩展 API 路由：
+ * - GET /api/v1/export/readings ：安全导出单传感器 CSV/JSON（硬上限 10,000 行，CSV 防公式注入，null 不补零）
+ * - GET /api/v1/export/report   ：导出脱敏系统健康与诊断报告（严格剔除用户凭据、会话与敏感配置）
+ * - GET/PUT /api/v1/notifications & POST /api/v1/notifications/test ：Webhook 通知配置与签名测试
+ */
 import { Elysia } from "elysia";
 import type { AuthService } from "../auth/service.ts";
 import type { ApiConfig } from "../config/env.ts";

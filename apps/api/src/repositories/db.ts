@@ -1,3 +1,8 @@
+/**
+ * SQLite 数据库连接与 Drizzle 自动迁移模块（docs/database/schema.md §3）。
+ * 强制开启 WAL 模式、5 秒 busy_timeout、外键约束与增量回收（auto_vacuum = INCREMENTAL），
+ * 关闭前主动执行 wal_checkpoint(TRUNCATE) 以保证数据落盘完整性。
+ */
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";

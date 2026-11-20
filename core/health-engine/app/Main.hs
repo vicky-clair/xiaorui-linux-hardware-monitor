@@ -1,5 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | Haskell 健康分析引擎无状态 HTTP/1.1 服务入口（ADR-0004）。
+-- 仅暴露内部接口：
+--   - GET  /health     ：容器健康检查与协议/引擎版本
+--   - POST /v1/analyze ：接收单次分析请求并返回纯计算结果与告警状态转移
+-- 严格遵守职责边界：不访问 SQLite、不读取 /sys 或 /proc、单次请求体硬上限 4 MiB。
 module Main (main) where
 
 import Control.Concurrent (forkIO)

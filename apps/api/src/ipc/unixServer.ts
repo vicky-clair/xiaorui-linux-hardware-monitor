@@ -1,3 +1,7 @@
+/**
+ * API 侧 Unix Domain Socket IPC 监听服务端（ADR-0003：API 监听，Agent 主动连接）。
+ * 使用 4 字节大端长度前缀分帧解码，经 JSON Schema 校验与去重游标处理后返回逐帧 ACK。
+ */
 import { chmodSync, mkdirSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 import { encodeFrame, FrameDecoder, FrameError } from "@lhm/protocol";
