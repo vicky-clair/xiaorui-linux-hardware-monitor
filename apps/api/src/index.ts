@@ -33,7 +33,8 @@ if (process.platform !== "win32") {
   );
 }
 
-// Background aggregation & health analysis timer (every 60s)
+// Background aggregation, hourly retention cleanup, & health analysis timer (every 60s)
+let lastPruneAtMs = 0;
 const aggTimer = setInterval(() => {
   const now = Date.now();
   const from1m = new Date(now - 5 * 60_000).toISOString();
@@ -42,6 +43,35 @@ const aggTimer = setInterval(() => {
     runtime.aggregationRepo.aggregate1m(from1m, toNow);
     const from1h = new Date(now - 2 * 3_600_000).toISOString();
     runtime.aggregationRepo.aggregate1h(from1h, toNow);
+
+    if (now - lastPruneAtMs >= 3_600_000) {
+      const pruned = runtime.aggregationRepo.pruneExpired(
+        {
+          rawDays: runtime.config.retentionRawDays,
+          agg1mDays: runtime.config.retention1mDays,
+          agg1hDays: runtime.config.retention1hDays,
+          smartDays: runtime.config.retentionSmartDays,
+        },
+        now,
+      );
+      lastPruneAtMs = now;
+      if (
+        pruned.rawDeleted > 0 ||
+        pruned.agg1mDeleted > 0 ||
+        pruned.agg1hDeleted > 0 ||
+        pruned.smartDeleted > 0
+      ) {
+        console.info(
+          JSON.stringify({
+            timestamp: new Date(now).toISOString(),
+            component: "lhm-api-retention",
+            level: "INFO",
+            message: "Completed routine batched retention cleanup",
+            ...pruned,
+          }),
+        );
+      }
+    }
   } catch (err) {
     console.error(
       JSON.stringify({

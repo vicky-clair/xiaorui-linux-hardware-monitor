@@ -1,0 +1,24 @@
+# Multi-stage React + Vite build -> non-root nginx-unprivileged container (ADR-0009)
+FROM oven/bun:1.4.4-debian@sha256:93d5032fe06d163427822dc1598f420363759bb18155c9cc90eb1be05a64a19e AS builder
+
+WORKDIR /app
+
+COPY package.json bun.lock tsconfig.base.json ./
+COPY packages/protocol/typescript/package.json ./packages/protocol/typescript/package.json
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/web/package.json ./apps/web/package.json
+RUN bun install --frozen-lockfile
+
+COPY packages/protocol ./packages/protocol
+COPY apps/web ./apps/web
+RUN bun run build:web
+
+FROM nginxinc/nginx-unprivileged:1.28-alpine-slim@sha256:47288214e27cc88b5b3c5277f4fcdb58bc29059f86121b59b9c1e1171938216e
+
+COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/nginx-health"]

@@ -139,6 +139,7 @@ tests/             integration/、fixtures/、hardware-simulation/、protocol/
 | 数据库 | [docs/database/schema.md](docs/database/schema.md) |
 | Web 控制台 | [docs/web/ui-spec.md](docs/web/ui-spec.md) |
 | 安全、日志与错误 | [docs/security/security.md](docs/security/security.md) |
+| 生产部署与运维 | [docs/deployment/deployment.md](docs/deployment/deployment.md) |
 | 测试与硬件模拟 | [docs/testing/testing.md](docs/testing/testing.md) |
 | 开发环境 | [docs/development/environment.md](docs/development/environment.md) |
 | 阶段、Git、性能目标 | [docs/development/workflow.md](docs/development/workflow.md) |

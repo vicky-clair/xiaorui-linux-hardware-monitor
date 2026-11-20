@@ -1,0 +1,38 @@
+# Multi-stage Haskell Health Engine build -> minimal non-root Debian slim runtime (ADR-0004)
+FROM haskell:9.10.3-slim-bookworm@sha256:683f74f48dcc5a40081628d12ebe8f3bb379bf3fefa46d74e785b5fbb9f21b32 AS builder
+
+WORKDIR /build
+
+COPY packages/protocol/haskell ./packages/protocol/haskell
+COPY core/health-engine ./core/health-engine
+
+WORKDIR /build/core/health-engine
+
+# Normalize CRLF if built from Windows working tree, then build with bounded memory/concurrency
+RUN sed -i 's/\r$//' cabal.project.freeze || true \
+    && cabal update \
+    && cabal build exe:lhm-health-engine -j1 --ghc-options="+RTS -M1500m -RTS" \
+    && mkdir -p /out \
+    && cp "$(cabal list-bin exe:lhm-health-engine)" /out/lhm-health-engine \
+    && chmod 0755 /out/lhm-health-engine
+
+FROM debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgmp10 libffi8 zlib1g curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin lhm
+
+COPY --from=builder /out/lhm-health-engine /usr/local/bin/lhm-health-engine
+
+USER lhm
+
+ENV LHM_HEALTH_BIND=0.0.0.0 \
+    LHM_HEALTH_PORT=8090
+
+EXPOSE 8090
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["curl", "-fsS", "http://127.0.0.1:8090/health"]
+
+CMD ["/usr/local/bin/lhm-health-engine"]

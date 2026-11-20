@@ -11,9 +11,9 @@
 
 ## 2. 网络
 
-- API 只监听必要接口，由 Nginx 对外提供服务。
-- 使用 HTTPS；局域网证书方案由 ADR-0009 确定。
-- WebSocket 必须认证并校验 Origin（阶段 6 需考虑 Tauri 客户端的 Origin）。
+- API 与 Haskell 健康引擎只监听容器内部网络，不直接暴露宿主机端口；由非 root Nginx 容器提供单端口入口。
+- 按 [ADR-0009](../decisions/0009-lan-deployment-and-https.md)：受信任私有局域网默认支持直连 HTTP（避开宿主机 80/443 等既有端口，`LHM_COOKIE_SECURE=false`），同时完整提供可选 HTTPS 反向代理模板与自签名证书脚本；若暴露至非受信任网络，**必须**启用 HTTPS 与 `LHM_COOKIE_SECURE=true`。
+- WebSocket 必须认证并校验 Origin（已预留阶段 6 Tauri 客户端的 `tauri://localhost` 与 `http://tauri.localhost`）。
 - 不在源码中存储密钥；不向前端返回敏感配置；未认证用户不得修改任何配置。
 
 ## 3. Agent

@@ -1,0 +1,19 @@
+# OPTIONAL HTTPS reverse-proxy Compose override (NOT enabled by default — see ADR-0009).
+# Usage (after generating certificates with deploy/scripts/gen-self-signed-cert.sh):
+#   docker compose --env-file deploy/docker/.env \
+#     -f deploy/docker/docker-compose.yml \
+#     -f deploy/docker/docker-compose.https.yml up -d
+
+services:
+  api:
+    environment:
+      LHM_COOKIE_SECURE: "true"
+
+  web:
+    environment:
+      LHM_HTTPS_PORT: "${LHM_HTTPS_PORT:-18443}"
+    ports:
+      - "${LHM_HTTPS_PORT:-18443}:8443"
+    volumes:
+      - ../nginx/https.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./certs:/etc/nginx/certs:ro

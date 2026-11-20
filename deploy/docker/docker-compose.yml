@@ -1,0 +1,84 @@
+# Default LAN HTTP deployment stack (ADR-0009):
+# - All containers run non-root with cap_drop: ALL and no-new-privileges
+# - No privileged: true, no host network, no Docker socket, no root filesystem mount
+# - Single isolated LAN HTTP port (${LHM_WEB_PORT:-18080}) avoiding host 80/443/8080/9000
+# - Optional HTTPS reverse proxy is prepared in docker-compose.https.yml (NOT enabled by default)
+
+services:
+  health-engine:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.health-engine
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 256m
+    environment:
+      LHM_HEALTH_BIND: "0.0.0.0"
+      LHM_HEALTH_PORT: "8090"
+    networks:
+      - lhm_net
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.api
+    user: "${LHM_UID:-1000}:${LHM_GID:-1000}"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    depends_on:
+      health-engine:
+        condition: service_healthy
+    environment:
+      LHM_API_HOST: "0.0.0.0"
+      LHM_API_PORT: "3000"
+      LHM_DB_PATH: "/data/lhm.sqlite"
+      LHM_IPC_SOCKET: "/run/linux-hardware-monitor/ipc.sock"
+      LHM_HEALTH_ENGINE_URL: "http://health-engine:8090"
+      LHM_HEALTH_ENGINE_TIMEOUT_MS: "${LHM_HEALTH_ENGINE_TIMEOUT_MS:-5000}"
+      LHM_COOKIE_SECURE: "${LHM_COOKIE_SECURE:-false}"
+      LHM_ALLOWED_ORIGINS: "${LHM_ALLOWED_ORIGINS:-http://localhost:18080,http://127.0.0.1:18080,tauri://localhost,http://tauri.localhost}"
+      LHM_STALE_AFTER_SECONDS: "${LHM_STALE_AFTER_SECONDS:-60}"
+      LHM_RETENTION_RAW_DAYS: "${LHM_RETENTION_RAW_DAYS:-14}"
+      LHM_RETENTION_1M_DAYS: "${LHM_RETENTION_1M_DAYS:-90}"
+      LHM_RETENTION_1H_DAYS: "${LHM_RETENTION_1H_DAYS:-365}"
+      LHM_RETENTION_SMART_DAYS: "${LHM_RETENTION_SMART_DAYS:-365}"
+    volumes:
+      - lhm_sqlite_data:/data
+      # Directory mount ONLY — never mount a single .sock file directly (ADR-0003)
+      - "${LHM_IPC_DIR:-../../run}:/run/linux-hardware-monitor"
+    networks:
+      - lhm_net
+
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.web
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 128m
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${LHM_WEB_PORT:-18080}:8080"
+    networks:
+      - lhm_net
+
+volumes:
+  lhm_sqlite_data:
+    driver: local
+
+networks:
+  lhm_net:
+    driver: bridge

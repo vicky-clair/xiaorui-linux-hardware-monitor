@@ -1,0 +1,64 @@
+[Unit]
+Description=Linux Hardware Monitor Native Rust Agent
+Documentation=https://github.com/vicky-clair/xiaorui-linux-hardware-monitor
+After=local-fs.target network.target
+Wants=local-fs.target
+
+[Service]
+Type=simple
+# Dedicated non-root user & shared IPC group per ADR-0006 (NEVER User=root)
+User=lhm-agent
+Group=lhm-ipc
+SupplementaryGroups=video render
+
+# Binary installed by administrator after explicit review
+ExecStart=/usr/local/bin/lhm-agent --socket /run/linux-hardware-monitor/ipc.sock --interval 5
+Environment=RUST_LOG=info
+
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=15s
+
+# Shared runtime directory for Unix Domain Socket (0750: lhm-agent:lhm-ipc)
+RuntimeDirectory=linux-hardware-monitor
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+
+# Filesystem & kernel hardening baseline (ADR-0006)
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+
+# Minimal capabilities:
+# Default is empty (pure /sys hwmon/thermal/proc/drm read-only collection).
+# Uncomment ONLY if you explicitly enable privileged SMART/NVMe or Intel PMU collection:
+# CapabilityBoundingSet=CAP_SYS_RAWIO CAP_PERFMON
+# AmbientCapabilities=CAP_SYS_RAWIO CAP_PERFMON
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Closed device allowlist (uncomment specific nodes matching your host hardware)
+DevicePolicy=closed
+DeviceAllow=/dev/null rw
+DeviceAllow=/dev/urandom r
+# DeviceAllow=/dev/dri/renderD128 rw
+# DeviceAllow=/dev/sda r
+# DeviceAllow=/dev/sdb r
+# DeviceAllow=/dev/nvme0 r
+
+# Resource guardrails (target: <2% CPU, <150MB RAM)
+MemoryMax=150M
+CPUQuota=20%
+
+[Install]
+WantedBy=multi-user.target

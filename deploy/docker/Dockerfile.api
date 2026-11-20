@@ -1,0 +1,34 @@
+# Non-root Bun API container (ADR-0001 / ADR-0003 / ADR-0009)
+FROM oven/bun:1.4.4-debian@sha256:93d5032fe06d163427822dc1598f420363759bb18155c9cc90eb1be05a64a19e
+
+WORKDIR /app
+
+# Install workspace dependencies with frozen lockfile
+COPY package.json bun.lock tsconfig.base.json ./
+COPY packages/protocol/typescript/package.json ./packages/protocol/typescript/package.json
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/web/package.json ./apps/web/package.json
+RUN bun install --frozen-lockfile
+
+# Copy protocol schemas/bindings and API source + Drizzle migrations
+COPY packages/protocol ./packages/protocol
+COPY apps/api ./apps/api
+
+# Prepare local SQLite data directory & IPC mount point for non-root UID 1000 (bun)
+RUN mkdir -p /data /run/linux-hardware-monitor \
+    && chown -R 1000:1000 /data /run/linux-hardware-monitor /app \
+    && chmod 0770 /data /run/linux-hardware-monitor
+
+USER 1000:1000
+
+ENV LHM_API_HOST=0.0.0.0 \
+    LHM_API_PORT=3000 \
+    LHM_DB_PATH=/data/lhm.sqlite \
+    LHM_IPC_SOCKET=/run/linux-hardware-monitor/ipc.sock
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["bun", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
+CMD ["bun", "apps/api/src/index.ts"]
