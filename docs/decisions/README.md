@@ -19,6 +19,6 @@
 | 0005 | 协议单一事实来源 | [0005-protocol-single-source-of-truth.md](0005-protocol-single-source-of-truth.md) | 阶段 0 | accepted |
 | 0006 | Agent 权限模型 | [0006-agent-permission-model.md](0006-agent-permission-model.md) | 阶段 0 | accepted |
 | 0007 | 告警职责划分 | [0007-alert-responsibility-boundary.md](0007-alert-responsibility-boundary.md) | 阶段 0 | accepted |
-| 0008 | Rust crate 划分 | 待起草 | 阶段 1 前 | 待提出 |
+| 0008 | Rust crate 划分 | [0008-rust-crate-layout.md](0008-rust-crate-layout.md) | 阶段 1 前 | proposed |
 | 0009 | 局域网 HTTPS 证书 | 待起草 | 阶段 5 前 | 待提出 |
 | 0010 | 多主机传输 | 待起草 | 阶段 6 前 | 待提出 |
