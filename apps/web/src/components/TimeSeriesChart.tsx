@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts";
 import type { Unit } from "@lhm/protocol/types";
+import { getThemeOption, useTheme, type ChartPalette } from "../lib/theme.tsx";
 
 export interface ChartSeriesInput {
   name: string;
@@ -9,37 +10,40 @@ export interface ChartSeriesInput {
   points: Array<[number, number | null]>;
 }
 
+const DEFAULT_CHART_PALETTE: ChartPalette = getThemeOption("slate").chart;
+
 /**
- * Pure ECharts option builder (exported for unit testing of null-gap preservation).
+ * Pure ECharts option builder (exported for unit testing of null-gap preservation & theme adaptation).
  */
 export function buildTimeSeriesOption(
   seriesList: ChartSeriesInput[],
   unitLabel: string,
+  palette: ChartPalette = DEFAULT_CHART_PALETTE,
 ): echarts.EChartsOption {
   return {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
-      backgroundColor: "#0f172a",
-      borderColor: "#334155",
-      textStyle: { color: "#f1f5f9" },
+      backgroundColor: palette.tooltipBg,
+      borderColor: palette.tooltipBorder,
+      textStyle: { color: palette.tooltipText },
     },
     legend: {
       top: 0,
-      textStyle: { color: "#cbd5e1" },
+      textStyle: { color: palette.legendText },
     },
     grid: { left: 56, right: 20, top: 36, bottom: 32 },
     xAxis: {
       type: "time",
-      axisLabel: { color: "#94a3b8" },
-      axisLine: { lineStyle: { color: "#334155" } },
+      axisLabel: { color: palette.axisLabel },
+      axisLine: { lineStyle: { color: palette.axisLine } },
     },
     yAxis: {
       type: "value",
       name: unitLabel,
-      nameTextStyle: { color: "#94a3b8" },
-      axisLabel: { color: "#94a3b8" },
-      splitLine: { lineStyle: { color: "#1e293b" } },
+      nameTextStyle: { color: palette.axisLabel },
+      axisLabel: { color: palette.axisLabel },
+      splitLine: { lineStyle: { color: palette.splitLine } },
     },
     series: seriesList.map((s) => ({
       name: s.name,
@@ -61,12 +65,13 @@ export function TimeSeriesChart({
   height?: number;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const { themeOption } = useTheme();
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const chart = echarts.init(el);
-    chart.setOption(buildTimeSeriesOption(series, unitLabel), true);
+    chart.setOption(buildTimeSeriesOption(series, unitLabel, themeOption.chart), true);
 
     const onResize = () => chart.resize();
     window.addEventListener("resize", onResize);
@@ -74,7 +79,7 @@ export function TimeSeriesChart({
       window.removeEventListener("resize", onResize);
       chart.dispose();
     };
-  }, [series, unitLabel]);
+  }, [series, unitLabel, themeOption.chart]);
 
   return <div ref={containerRef} style={{ width: "100%", height }} />;
 }

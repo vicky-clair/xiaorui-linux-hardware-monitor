@@ -50,13 +50,13 @@ export function CoverageView({ data }: { data: CoverageResponse }) {
                     : t("coverage.tempNone")}
                 </td>
                 <td>{d.supported_metrics.join(", ") || "—"}</td>
-                <td style={{ color: d.permission_denied_metrics.length ? "#fcd34d" : undefined }}>
+                <td style={{ color: d.permission_denied_metrics.length ? "var(--text-warn)" : undefined }}>
                   {d.permission_denied_metrics.join(", ") || "—"}
                 </td>
                 <td style={{ color: "var(--text-muted)" }}>
                   {d.unsupported_metrics.join(", ") || "—"}
                 </td>
-                <td style={{ color: d.stale_metrics.length ? "#fca5a5" : undefined }}>
+                <td style={{ color: d.stale_metrics.length ? "var(--text-danger)" : undefined }}>
                   {d.stale_metrics.join(", ") || "—"}
                 </td>
                 <td>{formatLocalTime(d.last_success_at, locale)}</td>

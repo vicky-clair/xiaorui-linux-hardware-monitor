@@ -15,6 +15,13 @@ import {
 import { buildTimeSeriesOption } from "./components/TimeSeriesChart.tsx";
 import { formatReadingValue, resolveTimeRange } from "./lib/format.ts";
 import { I18nProvider, translateAnalysisText, translateDiagnostic } from "./lib/i18n.tsx";
+import {
+  getThemeOption,
+  isValidThemeId,
+  THEME_OPTIONS,
+  ThemeProvider,
+  ThemeSwitcher,
+} from "./lib/theme.tsx";
 import { GlobalAlertBanner } from "./App.tsx";
 import { AlertsView } from "./pages/AlertsPage.tsx";
 import { AnalysisView } from "./pages/AnalysisPage.tsx";
@@ -344,5 +351,40 @@ describe("Core page rendering", () => {
     expect(bannerHtml).toContain("banner-err");
     expect(bannerHtml).toContain("硬件告警触发中");
     expect(bannerHtml).toContain("cpu-system-0");
+  });
+
+  test("renders 6 selectable background themes and adapts ECharts palette for light/dark themes", () => {
+    expect(THEME_OPTIONS.length).toBe(6);
+    expect(isValidThemeId("forest")).toBe(true);
+    expect(isValidThemeId("snow")).toBe(true);
+    expect(isValidThemeId("invalid-theme")).toBe(false);
+
+    const zhThemeHtml = renderToStaticMarkup(
+      <ThemeProvider initialTheme="forest">
+        <I18nProvider initialLocale="zh">
+          <ThemeSwitcher />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+    expect(zhThemeHtml).toContain("深海蓝灰");
+    expect(zhThemeHtml).toContain("静谧森绿");
+    expect(zhThemeHtml).toContain("晨曦浅白");
+    expect(zhThemeHtml).toContain("护眼米白");
+    expect(zhThemeHtml).toContain('aria-pressed="true"');
+
+    const enThemeHtml = renderToStaticMarkup(
+      <ThemeProvider initialTheme="warm">
+        <I18nProvider initialLocale="en">
+          <ThemeSwitcher />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+    expect(enThemeHtml).toContain("Warm Paper");
+    expect(enThemeHtml).toContain("Clean Light");
+
+    const lightOpt = buildTimeSeriesOption([], "°C", getThemeOption("snow").chart);
+    const tooltip = lightOpt.tooltip as { backgroundColor?: string; textStyle?: { color?: string } };
+    expect(tooltip.backgroundColor).toBe("#ffffff");
+    expect(tooltip.textStyle?.color).toBe("#0f172a");
   });
 });

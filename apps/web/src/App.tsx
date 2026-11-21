@@ -5,6 +5,7 @@ import { SCHEMA_VERSION } from "@lhm/protocol/types";
 import { api, type AlertRow, type AnalysisRow, type UserInfo } from "./lib/api.ts";
 import { formatLocalTime, formatReadingValue } from "./lib/format.ts";
 import { LanguageSwitcher, useI18n } from "./lib/i18n.tsx";
+import { ThemeSwitcher } from "./lib/theme.tsx";
 import { useRealtimeStream } from "./lib/ws.ts";
 import { LoadingState, WsStatusBanner } from "./components/States.tsx";
 import { AlertsPage } from "./pages/AlertsPage.tsx";
@@ -234,6 +235,7 @@ export function App() {
             )}
           </div>
           <div className="row">
+            <ThemeSwitcher />
             <LanguageSwitcher />
             <span className="mono" style={{ color: "var(--text-muted)" }}>
               {user.username} ({user.role})

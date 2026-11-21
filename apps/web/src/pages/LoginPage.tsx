@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { api, ApiClientError, type UserInfo } from "../lib/api.ts";
 import { LanguageSwitcher, useI18n } from "../lib/i18n.tsx";
+import { ThemeSwitcher } from "../lib/theme.tsx";
 import { ErrorState } from "../components/States.tsx";
 
 export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInfo) => void }) {
@@ -38,7 +39,10 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (user: UserInf
       <div className="panel" style={{ width: "100%", maxWidth: 440 }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 6 }}>
           <h1 style={{ margin: 0, fontSize: 20 }}>Linux Hardware Monitor</h1>
-          <LanguageSwitcher />
+          <div className="row" style={{ gap: 8 }}>
+            <ThemeSwitcher />
+            <LanguageSwitcher />
+          </div>
         </div>
         <p style={{ margin: "0 0 16px 0", color: "var(--text-muted)", fontSize: 13 }}>
           {mode === "login" ? t("login.descLogin") : t("login.descBootstrap")}

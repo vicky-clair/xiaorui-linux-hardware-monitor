@@ -106,13 +106,13 @@ export function AnalysisView({
                         </div>
                       ))}
                       {r.anomalies.map((a, idx) => (
-                        <div key={`a-${idx}`} style={{ fontSize: 12, color: "#fcd34d" }}>
+                        <div key={`a-${idx}`} style={{ fontSize: 12, color: "var(--text-warn)" }}>
                           {t("analysis.anomalyPrefix")} {a.code}:{" "}
                           {translateAnalysisText(locale, a.reason)}
                         </div>
                       ))}
                       {r.correlations.map((c, idx) => (
-                        <div key={`c-${idx}`} style={{ fontSize: 12, color: "#fca5a5" }}>
+                        <div key={`c-${idx}`} style={{ fontSize: 12, color: "var(--text-danger)" }}>
                           {t("analysis.correlationPrefix")} {c.code}:{" "}
                           {translateAnalysisText(locale, c.summary)}
                         </div>

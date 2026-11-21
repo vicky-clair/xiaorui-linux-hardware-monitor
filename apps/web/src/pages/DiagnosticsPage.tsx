@@ -117,7 +117,7 @@ export function DiagnosticsPage() {
                       <td>
                         <div>{localized.message}</div>
                         {localized.remediation && (
-                          <div style={{ color: "#93c5fd", fontSize: 12, marginTop: 2 }}>
+                          <div style={{ color: "var(--text-info)", fontSize: 12, marginTop: 2 }}>
                             {t("diag.remediationPrefix")}
                             {localized.remediation}
                           </div>
