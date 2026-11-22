@@ -387,6 +387,40 @@ pub struct SmartReport {
     pub available_spare: Option<f64>,
     #[serde(default)]
     pub critical_warning: Option<u64>,
+    #[serde(default)]
+    pub firmware_version: Option<String>,
+    #[serde(default)]
+    pub serial_number: Option<String>,
+    #[serde(default)]
+    pub rotation_rate_rpm: Option<u64>,
+    #[serde(default)]
+    pub sata_link_speed: Option<String>,
+    #[serde(default)]
+    pub apm_level: Option<u64>,
+    #[serde(default)]
+    pub write_cache_enabled: Option<bool>,
+    #[serde(default)]
+    pub trim_supported: Option<bool>,
+    #[serde(default)]
+    pub self_test_passed: Option<bool>,
+    #[serde(default)]
+    pub self_test_last_status: Option<String>,
+    #[serde(default)]
+    pub self_test_last_hours: Option<UintString>,
+    #[serde(default)]
+    pub error_log_count: Option<u64>,
+    #[serde(default)]
+    pub media_errors: Option<UintString>,
+    #[serde(default)]
+    pub num_err_log_entries: Option<UintString>,
+    #[serde(default)]
+    pub unsafe_shutdowns: Option<UintString>,
+    #[serde(default)]
+    pub warning_temp_time_min: Option<u64>,
+    #[serde(default)]
+    pub critical_comp_time_min: Option<u64>,
+    #[serde(default)]
+    pub temperature_sensors_celsius: Option<Vec<f64>>,
     pub attributes: Vec<SmartAttribute>,
     pub collected_at: String,
 }

@@ -25,6 +25,8 @@ pub const ALLOWED_BINARIES: &[&str] = &[
     "/usr/sbin/nvme",
     "/usr/bin/nvme",
     "/usr/bin/nvidia-smi",
+    "/usr/bin/df",
+    "/bin/df",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -11,9 +11,142 @@ use lhm_protocol::{
     DeviceType, Diagnostic, DiagnosticLevel, ReadingQuality, SCHEMA_VERSION, Sensor, SensorReading,
     SensorType, Unit,
 };
+use std::collections::BTreeSet;
 use std::sync::RwLock;
 use std::time::Duration;
 use uuid::Uuid;
+
+pub const DF_BIN: &str = "/usr/bin/df";
+
+#[derive(Debug, Clone)]
+pub struct MountedFilesystem {
+    pub source: String,
+    pub fstype: String,
+    pub total_bytes: u64,
+    pub used_bytes: u64,
+    pub avail_bytes: u64,
+    pub usage_percent: f64,
+    pub mountpoint: String,
+    pub device_id: String,
+    pub mount_slug: String,
+}
+
+fn is_persistent_fstype(fstype: &str) -> bool {
+    matches!(
+        fstype,
+        "ext4" | "ext3" | "ext2" | "xfs" | "btrfs" | "ntfs" | "ntfs3" | "fuseblk" | "exfat" | "zfs"
+    )
+}
+
+fn is_ignored_mountpoint(mountpoint: &str) -> bool {
+    mountpoint.starts_with("/boot/efi")
+        || mountpoint.starts_with("/var/lib/docker")
+        || mountpoint.starts_with("/snap")
+        || mountpoint.starts_with("/run")
+        || mountpoint.starts_with("/sys")
+        || mountpoint.starts_with("/proc")
+        || mountpoint.starts_with("/dev")
+}
+
+fn parent_block_name(source: &str) -> Option<String> {
+    let dev = source.strip_prefix("/dev/")?;
+    if dev.starts_with("nvme") {
+        // /dev/nvme0n1p2 -> nvme0n1
+        if let Some((base, _)) = dev.rsplit_once('p') {
+            return Some(base.to_owned());
+        }
+        return Some(dev.to_owned());
+    }
+    if dev.starts_with("sd") || dev.starts_with("vd") {
+        // /dev/sda2 -> sda
+        let base = dev.trim_end_matches(|c: char| c.is_ascii_digit());
+        if !base.is_empty() {
+            return Some(base.to_owned());
+        }
+    }
+    None
+}
+
+fn slugify_mountpoint(mountpoint: &str) -> String {
+    if mountpoint == "/" {
+        return "root".into();
+    }
+    let cleaned: String = mountpoint
+        .trim_matches('/')
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    if cleaned.is_empty() {
+        "mount".into()
+    } else {
+        cleaned
+    }
+}
+
+pub fn parse_df_mounts(stdout: &str, disks: &[DiscoveredBlockDevice]) -> Vec<MountedFilesystem> {
+    let mut seen_sources = BTreeSet::new();
+    let mut out = Vec::new();
+    for line in stdout.lines().skip(1) {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 7 {
+            continue;
+        }
+        let source = parts[0];
+        let fstype = parts[1];
+        if !source.starts_with("/dev/") || !is_persistent_fstype(fstype) {
+            continue;
+        }
+        let mountpoint = parts[6..].join(" ");
+        if is_ignored_mountpoint(&mountpoint) || !seen_sources.insert(source.to_owned()) {
+            continue;
+        }
+        let Ok(total_bytes) = parts[2].parse::<u64>() else {
+            continue;
+        };
+        let Ok(used_bytes) = parts[3].parse::<u64>() else {
+            continue;
+        };
+        let Ok(avail_bytes) = parts[4].parse::<u64>() else {
+            continue;
+        };
+        if total_bytes == 0 {
+            continue;
+        }
+        let usage_percent = if let Some(pct_str) = parts[5].strip_suffix('%')
+            && let Ok(pct) = pct_str.parse::<f64>()
+        {
+            pct
+        } else {
+            ((used_bytes as f64 / total_bytes as f64) * 1000.0).round() / 10.0
+        };
+
+        let Some(parent_name) = parent_block_name(source) else {
+            continue;
+        };
+        let Some(disk) = disks.iter().find(|d| d.block_name == parent_name) else {
+            continue;
+        };
+
+        out.push(MountedFilesystem {
+            source: source.to_owned(),
+            fstype: fstype.to_owned(),
+            total_bytes,
+            used_bytes,
+            avail_bytes,
+            usage_percent,
+            mountpoint: mountpoint.clone(),
+            device_id: disk.device_id.clone(),
+            mount_slug: slugify_mountpoint(&mountpoint),
+        });
+    }
+    out
+}
 
 #[derive(Debug, Clone)]
 pub struct DiscoveredBlockDevice {
@@ -220,6 +353,58 @@ impl Collector for StorageCollector {
                 });
             }
 
+            let mounts = match ctx
+                .cmd
+                .run(DF_BIN, &["-B1", "-T", "-P"], Duration::from_secs(2))
+                .await
+            {
+                Ok(out) if out.exit_code == 0 => parse_df_mounts(&out.stdout, &disks),
+                _ => Vec::new(),
+            };
+
+            for m in &mounts {
+                res.sensors.push(Sensor {
+                    sensor_id: sensor_id(&m.device_id, "fs-usage", &m.mount_slug),
+                    device_id: m.device_id.clone(),
+                    sensor_type: SensorType::Utilization,
+                    sensor_name: format!("Mount {} Usage ({})", m.mountpoint, m.fstype),
+                    source: "df".into(),
+                    unit: Unit::Percent,
+                    capability_status: CapabilityStatus::Supported,
+                    enabled: true,
+                });
+                res.sensors.push(Sensor {
+                    sensor_id: sensor_id(&m.device_id, "fs-used", &m.mount_slug),
+                    device_id: m.device_id.clone(),
+                    sensor_type: SensorType::Other,
+                    sensor_name: format!("Mount {} Used", m.mountpoint),
+                    source: "df".into(),
+                    unit: Unit::Byte,
+                    capability_status: CapabilityStatus::Supported,
+                    enabled: true,
+                });
+                res.sensors.push(Sensor {
+                    sensor_id: sensor_id(&m.device_id, "fs-avail", &m.mount_slug),
+                    device_id: m.device_id.clone(),
+                    sensor_type: SensorType::Other,
+                    sensor_name: format!("Mount {} Available", m.mountpoint),
+                    source: "df".into(),
+                    unit: Unit::Byte,
+                    capability_status: CapabilityStatus::Supported,
+                    enabled: true,
+                });
+                res.sensors.push(Sensor {
+                    sensor_id: sensor_id(&m.device_id, "fs-total", &m.mount_slug),
+                    device_id: m.device_id.clone(),
+                    sensor_type: SensorType::Other,
+                    sensor_name: format!("Mount {} Total", m.mountpoint),
+                    source: "df".into(),
+                    unit: Unit::Byte,
+                    capability_status: CapabilityStatus::Supported,
+                    enabled: true,
+                });
+            }
+
             if !disks.is_empty() {
                 res.tasks.push(CollectionTask {
                     task_id: "storage:block".into(),
@@ -263,7 +448,7 @@ impl Collector for StorageCollector {
             let disks = self.state.read().expect("lock").disks.clone();
             let mut res = CollectResult::default();
             let now = utc_now_rfc3339();
-            for d in disks {
+            for d in &disks {
                 let cap = ctx
                     .sysfs
                     .read_to_string(&format!("/sys/block/{}/size", d.block_name))
@@ -286,6 +471,65 @@ impl Collector for StorageCollector {
                     source: "sysfs".into(),
                     collected_at: now.clone(),
                 });
+            }
+
+            // 采集各持久化挂载点的容量与使用率（内核 statfs 元数据读取，不唤醒待机机械盘）
+            if let Ok(out) = ctx
+                .cmd
+                .run(DF_BIN, &["-B1", "-T", "-P"], Duration::from_secs(2))
+                .await
+                && out.exit_code == 0
+            {
+                for m in parse_df_mounts(&out.stdout, &disks) {
+                    res.readings.push(SensorReading {
+                        schema_version: SCHEMA_VERSION.into(),
+                        host_id: ctx.host_id.clone(),
+                        device_id: m.device_id.clone(),
+                        sensor_id: sensor_id(&m.device_id, "fs-usage", &m.mount_slug),
+                        metric: "fs_usage_percent".into(),
+                        value: Some(m.usage_percent),
+                        unit: Unit::Percent,
+                        quality: ReadingQuality::Valid,
+                        source: "df".into(),
+                        collected_at: now.clone(),
+                    });
+                    res.readings.push(SensorReading {
+                        schema_version: SCHEMA_VERSION.into(),
+                        host_id: ctx.host_id.clone(),
+                        device_id: m.device_id.clone(),
+                        sensor_id: sensor_id(&m.device_id, "fs-used", &m.mount_slug),
+                        metric: "fs_used_bytes".into(),
+                        value: Some(m.used_bytes as f64),
+                        unit: Unit::Byte,
+                        quality: ReadingQuality::Valid,
+                        source: "df".into(),
+                        collected_at: now.clone(),
+                    });
+                    res.readings.push(SensorReading {
+                        schema_version: SCHEMA_VERSION.into(),
+                        host_id: ctx.host_id.clone(),
+                        device_id: m.device_id.clone(),
+                        sensor_id: sensor_id(&m.device_id, "fs-avail", &m.mount_slug),
+                        metric: "fs_avail_bytes".into(),
+                        value: Some(m.avail_bytes as f64),
+                        unit: Unit::Byte,
+                        quality: ReadingQuality::Valid,
+                        source: "df".into(),
+                        collected_at: now.clone(),
+                    });
+                    res.readings.push(SensorReading {
+                        schema_version: SCHEMA_VERSION.into(),
+                        host_id: ctx.host_id.clone(),
+                        device_id: m.device_id.clone(),
+                        sensor_id: sensor_id(&m.device_id, "fs-total", &m.mount_slug),
+                        metric: "fs_total_bytes".into(),
+                        value: Some(m.total_bytes as f64),
+                        unit: Unit::Byte,
+                        quality: ReadingQuality::Valid,
+                        source: "df".into(),
+                        collected_at: now.clone(),
+                    });
+                }
             }
             res
         })

@@ -53,6 +53,46 @@
     "percentage_used": { "type": ["number", "null"], "minimum": 0 },
     "available_spare": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
     "critical_warning": { "type": ["integer", "null"], "minimum": 0 },
+    "firmware_version": { "type": ["string", "null"] },
+    "serial_number": { "type": ["string", "null"] },
+    "rotation_rate_rpm": { "type": ["integer", "null"], "minimum": 0 },
+    "sata_link_speed": { "type": ["string", "null"] },
+    "apm_level": { "type": ["integer", "null"], "minimum": 0 },
+    "write_cache_enabled": { "type": ["boolean", "null"] },
+    "trim_supported": { "type": ["boolean", "null"] },
+    "self_test_passed": { "type": ["boolean", "null"] },
+    "self_test_last_status": { "type": ["string", "null"] },
+    "self_test_last_hours": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UintString" },
+        { "type": "null" }
+      ]
+    },
+    "error_log_count": { "type": ["integer", "null"], "minimum": 0 },
+    "media_errors": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UintString" },
+        { "type": "null" }
+      ]
+    },
+    "num_err_log_entries": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UintString" },
+        { "type": "null" }
+      ]
+    },
+    "unsafe_shutdowns": {
+      "oneOf": [
+        { "$ref": "common.schema.json#/$defs/UintString" },
+        { "type": "null" }
+      ]
+    },
+    "warning_temp_time_min": { "type": ["integer", "null"], "minimum": 0 },
+    "critical_comp_time_min": { "type": ["integer", "null"], "minimum": 0 },
+    "temperature_sensors_celsius": {
+      "type": ["array", "null"],
+      "items": { "type": "number" }
+    },
     "attributes": {
       "type": "array",
       "items": {

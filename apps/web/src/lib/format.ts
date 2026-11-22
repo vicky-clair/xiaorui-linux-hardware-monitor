@@ -40,6 +40,9 @@ export function formatReadingValue(
   if (unit === "byte") {
     return formatBytes(value, locale);
   }
+  if (unit === "byte_per_second") {
+    return formatBytesPerSecond(value, locale);
+  }
   if (unit === "hertz") {
     return formatHertz(value, locale);
   }
@@ -59,6 +62,18 @@ export function formatBytes(bytes: number, locale: Locale = "zh"): string {
     idx += 1;
   }
   return `${val >= 100 || idx === 0 ? val.toFixed(0) : val.toFixed(2)} ${units[idx]}`;
+}
+
+export function formatBytesPerSecond(bps: number, locale: Locale = "zh"): string {
+  if (!Number.isFinite(bps)) return translate(locale, "fmt.noData");
+  if (bps === 0) return "0 B/s";
+  const mbps = bps / 125_000;
+  if ([10, 100, 1000, 2500, 5000, 10000, 25000, 40000, 100000].includes(Math.round(mbps))) {
+    const roundedMbps = Math.round(mbps);
+    const mbSec = (bps / 1_000_000).toFixed(0);
+    return `${roundedMbps} Mbps (${mbSec} MB/s)`;
+  }
+  return `${formatBytes(bps, locale)}/s`;
 }
 
 export function formatHertz(hz: number, locale: Locale = "zh"): string {

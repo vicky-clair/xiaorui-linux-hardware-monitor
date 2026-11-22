@@ -32,6 +32,7 @@ export type PageKey =
   | "nvme"
   | "temp-history"
   | "fans-voltage"
+  | "network"
   | "alerts"
   | "analysis"
   | "devices"
@@ -49,6 +50,7 @@ const NAV_KEYS: PageKey[] = [
   "nvme",
   "temp-history",
   "fans-voltage",
+  "network",
   "alerts",
   "analysis",
   "devices",
@@ -300,6 +302,15 @@ export function App() {
               title={t("nav.fans-voltage")}
               sensorTypes={["fan_speed", "voltage", "power", "current"]}
               emptyDescription={t("empty.fansVoltage")}
+              liveReadings={stream.latestBySensor}
+            />
+          )}
+          {page === "network" && (
+            <SensorCategoryPage
+              categoryKey="network"
+              title={t("nav.network")}
+              deviceTypes={["network"]}
+              emptyDescription={t("empty.network")}
               liveReadings={stream.latestBySensor}
             />
           )}

@@ -179,6 +179,23 @@ export interface SmartReport {
   percentage_used?: number | null;
   available_spare?: number | null;
   critical_warning?: number | null;
+  firmware_version?: string | null;
+  serial_number?: string | null;
+  rotation_rate_rpm?: number | null;
+  sata_link_speed?: string | null;
+  apm_level?: number | null;
+  write_cache_enabled?: boolean | null;
+  trim_supported?: boolean | null;
+  self_test_passed?: boolean | null;
+  self_test_last_status?: string | null;
+  self_test_last_hours?: UintString | null;
+  error_log_count?: number | null;
+  media_errors?: UintString | null;
+  num_err_log_entries?: UintString | null;
+  unsafe_shutdowns?: UintString | null;
+  warning_temp_time_min?: number | null;
+  critical_comp_time_min?: number | null;
+  temperature_sensors_celsius?: number[] | null;
   attributes: SmartAttribute[];
   collected_at: UtcTimestamp;
 }

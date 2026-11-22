@@ -342,6 +342,41 @@ export class TelemetryRepository {
           percentageUsed: report.percentage_used ?? null,
           availableSpare: report.available_spare ?? null,
           criticalWarning: report.critical_warning ?? null,
+          firmwareVersion: report.firmware_version ?? null,
+          serialNumber: report.serial_number ?? null,
+          rotationRateRpm: report.rotation_rate_rpm ?? null,
+          sataLinkSpeed: report.sata_link_speed ?? null,
+          apmLevel: report.apm_level ?? null,
+          writeCacheEnabled:
+            report.write_cache_enabled === null || report.write_cache_enabled === undefined
+              ? null
+              : report.write_cache_enabled
+                ? 1
+                : 0,
+          trimSupported:
+            report.trim_supported === null || report.trim_supported === undefined
+              ? null
+              : report.trim_supported
+                ? 1
+                : 0,
+          selfTestPassed:
+            report.self_test_passed === null || report.self_test_passed === undefined
+              ? null
+              : report.self_test_passed
+                ? 1
+                : 0,
+          selfTestLastStatus: report.self_test_last_status ?? null,
+          selfTestLastHours: report.self_test_last_hours ?? null,
+          errorLogCount: report.error_log_count ?? null,
+          mediaErrors: report.media_errors ?? null,
+          numErrLogEntries: report.num_err_log_entries ?? null,
+          unsafeShutdowns: report.unsafe_shutdowns ?? null,
+          warningTempTimeMin: report.warning_temp_time_min ?? null,
+          criticalCompTimeMin: report.critical_comp_time_min ?? null,
+          temperatureSensorsJson:
+            report.temperature_sensors_celsius && report.temperature_sensors_celsius.length > 0
+              ? JSON.stringify(report.temperature_sensors_celsius)
+              : null,
           collectedAt: report.collected_at,
         })
         .returning({ id: smartDevices.id })
@@ -711,6 +746,94 @@ export class TelemetryRepository {
     };
   }
 
+  private formatSmartRow(row: typeof smartDevices.$inferSelect) {
+    let temperatureSensorsCelsius: number[] | null = null;
+    if (row.temperatureSensorsJson) {
+      try {
+        const parsed = JSON.parse(row.temperatureSensorsJson);
+        if (Array.isArray(parsed)) {
+          temperatureSensorsCelsius = parsed.filter((v): v is number => typeof v === "number");
+        }
+      } catch {
+        temperatureSensorsCelsius = null;
+      }
+    }
+    return {
+      ...row,
+      smartPassed: row.smartPassed === null ? null : row.smartPassed === 1,
+      writeCacheEnabled:
+        row.writeCacheEnabled === null ? null : row.writeCacheEnabled === 1,
+      trimSupported: row.trimSupported === null ? null : row.trimSupported === 1,
+      selfTestPassed: row.selfTestPassed === null ? null : row.selfTestPassed === 1,
+      temperatureSensorsCelsius,
+    };
+  }
+
+  private getMountsForDevice(deviceId: string) {
+    const devSensors = this.db
+      .select()
+      .from(sensors)
+      .where(and(eq(sensors.deviceId, deviceId), eq(sensors.source, "df")))
+      .all();
+    if (devSensors.length === 0) return [];
+
+    const byMount = new Map<
+      string,
+      {
+        mountpoint: string;
+        fstype: string | null;
+        usagePercent: number | null;
+        usedBytes: number | null;
+        availBytes: number | null;
+        totalBytes: number | null;
+        collectedAt: string | null;
+      }
+    >();
+
+    for (const s of devSensors) {
+      const latest = this.db
+        .select({
+          value: sensorReadings.value,
+          quality: sensorReadings.quality,
+          collectedAt: sensorReadings.collectedAt,
+        })
+        .from(sensorReadings)
+        .where(eq(sensorReadings.sensorId, s.sensorId))
+        .orderBy(desc(sensorReadings.id))
+        .limit(1)
+        .get();
+      const usageMatch = /^Mount (.+) Usage \(([^)]+)\)$/.exec(s.sensorName);
+      const simpleMatch = /^Mount (.+) (Used|Available|Total)$/.exec(s.sensorName);
+      const mountpoint = usageMatch?.[1] ?? simpleMatch?.[1];
+      if (!mountpoint) continue;
+
+      const entry = byMount.get(mountpoint) ?? {
+        mountpoint,
+        fstype: null,
+        usagePercent: null,
+        usedBytes: null,
+        availBytes: null,
+        totalBytes: null,
+        collectedAt: null,
+      };
+      if (usageMatch) {
+        entry.fstype = usageMatch[2] ?? null;
+        entry.usagePercent = latest?.quality === "valid" ? latest.value : null;
+      } else if (simpleMatch?.[2] === "Used") {
+        entry.usedBytes = latest?.quality === "valid" ? latest.value : null;
+      } else if (simpleMatch?.[2] === "Available") {
+        entry.availBytes = latest?.quality === "valid" ? latest.value : null;
+      } else if (simpleMatch?.[2] === "Total") {
+        entry.totalBytes = latest?.quality === "valid" ? latest.value : null;
+      }
+      if (latest?.collectedAt && (!entry.collectedAt || latest.collectedAt > entry.collectedAt)) {
+        entry.collectedAt = latest.collectedAt;
+      }
+      byMount.set(mountpoint, entry);
+    }
+    return Array.from(byMount.values()).sort((a, b) => a.mountpoint.localeCompare(b.mountpoint));
+  }
+
   listStorage() {
     const storageDevs = this.listDevices({ deviceType: "storage" });
     return storageDevs.map((dev) => {
@@ -723,15 +846,8 @@ export class TelemetryRepository {
         .get();
       return {
         device: dev,
-        latest_smart: latestSmart
-          ? {
-              ...latestSmart,
-              smartPassed:
-                latestSmart.smartPassed === null
-                  ? null
-                  : latestSmart.smartPassed === 1,
-            }
-          : null,
+        latest_smart: latestSmart ? this.formatSmartRow(latestSmart) : null,
+        mounts: this.getMountsForDevice(dev.deviceId),
       };
     });
   }
@@ -768,16 +884,11 @@ export class TelemetryRepository {
       },
       latest: latestRow
         ? {
-            ...latestRow,
-            smartPassed:
-              latestRow.smartPassed === null ? null : latestRow.smartPassed === 1,
+            ...this.formatSmartRow(latestRow),
             attributes: attrs,
           }
         : null,
-      history: history.map((h) => ({
-        ...h,
-        smartPassed: h.smartPassed === null ? null : h.smartPassed === 1,
-      })),
+      history: history.map((h) => this.formatSmartRow(h)),
     };
   }
 

@@ -139,6 +139,23 @@ impl SmartCollector {
                 percentage_used: None,
                 available_spare: None,
                 critical_warning: None,
+                firmware_version: None,
+                serial_number: disk.serial.clone(),
+                rotation_rate_rpm: None,
+                sata_link_speed: None,
+                apm_level: None,
+                write_cache_enabled: None,
+                trim_supported: None,
+                self_test_passed: None,
+                self_test_last_status: None,
+                self_test_last_hours: None,
+                error_log_count: None,
+                media_errors: None,
+                num_err_log_entries: None,
+                unsafe_shutdowns: None,
+                warning_temp_time_min: None,
+                critical_comp_time_min: None,
+                temperature_sensors_celsius: None,
                 attributes: Vec::new(),
                 collected_at: now.clone(),
             };
@@ -246,6 +263,110 @@ impl SmartCollector {
         let critical_warning = nvme_log
             .and_then(|l| l.get("critical_warning"))
             .and_then(|v| v.as_u64());
+        let media_errors = Self::json_uint_string(nvme_log.and_then(|l| l.get("media_errors")));
+        let num_err_log_entries =
+            Self::json_uint_string(nvme_log.and_then(|l| l.get("num_err_log_entries")));
+        let unsafe_shutdowns =
+            Self::json_uint_string(nvme_log.and_then(|l| l.get("unsafe_shutdowns")));
+        let warning_temp_time_min = nvme_log
+            .and_then(|l| l.get("warning_temp_time"))
+            .and_then(|v| v.as_u64());
+        let critical_comp_time_min = nvme_log
+            .and_then(|l| l.get("critical_comp_time"))
+            .and_then(|v| v.as_u64());
+        let temperature_sensors_celsius = nvme_log
+            .and_then(|l| l.get("temperature_sensors"))
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|x| x.as_f64())
+                    .filter(|&t| t > 0.0)
+                    .map(|t| if t > 200.0 { t - 273.15 } else { t })
+                    .map(|c| (c * 10.0).round() / 10.0)
+                    .collect::<Vec<_>>()
+            })
+            .filter(|v| !v.is_empty());
+
+        let firmware_version = json
+            .get("firmware_version")
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned);
+        let serial_number = json
+            .get("serial_number")
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned)
+            .or_else(|| disk.serial.clone());
+        let rotation_rate_rpm = json.get("rotation_rate").and_then(|v| v.as_u64());
+        let sata_link_speed = json
+            .get("interface_speed")
+            .and_then(|s| s.get("current"))
+            .and_then(|c| c.get("string"))
+            .and_then(|v| v.as_str())
+            .or_else(|| {
+                json.get("sata_version")
+                    .and_then(|s| s.get("string"))
+                    .and_then(|v| v.as_str())
+            })
+            .map(str::to_owned);
+        let apm_level = json
+            .get("ata_apm")
+            .and_then(|a| a.get("level"))
+            .and_then(|v| v.as_u64());
+        let write_cache_enabled = json
+            .get("ata_write_cache")
+            .and_then(|w| w.get("enabled"))
+            .and_then(|v| v.as_bool());
+        let trim_supported = json
+            .get("trim")
+            .and_then(|t| t.get("supported"))
+            .and_then(|v| v.as_bool());
+
+        let last_selftest = json
+            .get("ata_smart_self_test_log")
+            .and_then(|l| l.get("standard"))
+            .and_then(|s| s.get("table"))
+            .and_then(|t| t.as_array())
+            .and_then(|arr| arr.first())
+            .or_else(|| {
+                json.get("nvme_self_test_log")
+                    .and_then(|l| l.get("table"))
+                    .and_then(|t| t.as_array())
+                    .and_then(|arr| arr.first())
+            });
+        let self_test_passed = last_selftest
+            .and_then(|row| row.get("status"))
+            .and_then(|st| st.get("passed"))
+            .and_then(|v| v.as_bool());
+        let self_test_last_status = last_selftest
+            .and_then(|row| row.get("status"))
+            .and_then(|st| st.get("string"))
+            .and_then(|v| v.as_str())
+            .map(str::to_owned);
+        let self_test_last_hours = Self::json_uint_string(
+            last_selftest
+                .and_then(|row| row.get("lifetime_hours"))
+                .or_else(|| last_selftest.and_then(|row| row.get("power_on_hours"))),
+        );
+        let error_log_count = json
+            .get("ata_smart_error_log")
+            .and_then(|l| l.get("summary"))
+            .and_then(|s| s.get("count"))
+            .and_then(|v| v.as_u64())
+            .or_else(|| {
+                json.get("ata_smart_error_log")
+                    .and_then(|l| l.get("extended"))
+                    .and_then(|e| e.get("count"))
+                    .and_then(|v| v.as_u64())
+            })
+            .or_else(|| {
+                num_err_log_entries
+                    .as_ref()
+                    .and_then(|u| u.as_str().parse::<u64>().ok())
+            });
 
         let mut attributes = Vec::new();
         if let Some(table) = json
@@ -296,6 +417,23 @@ impl SmartCollector {
             percentage_used,
             available_spare,
             critical_warning,
+            firmware_version,
+            serial_number,
+            rotation_rate_rpm,
+            sata_link_speed,
+            apm_level,
+            write_cache_enabled,
+            trim_supported,
+            self_test_passed,
+            self_test_last_status,
+            self_test_last_hours,
+            error_log_count,
+            media_errors,
+            num_err_log_entries,
+            unsafe_shutdowns,
+            warning_temp_time_min,
+            critical_comp_time_min,
+            temperature_sensors_celsius,
             attributes,
             collected_at: now.clone(),
         };
@@ -427,7 +565,8 @@ impl Collector for SmartCollector {
                 return res;
             };
 
-            // 轻量任务同时携带 -H -A，确保 smart_status.passed 始终准确上报且不覆盖为 null
+            // 全量任务采用 -i -H -A -l selftest -l error -g all（快速只读页，覆盖固件/转速/APM/自检/错误计数且不含慢速 -x）；
+            // 轻量温度任务仅上报温度传感器，不覆盖 smart_devices 表中的完整元信息。
             let args: Vec<&str> = if task.group == "smart_temp" {
                 vec![
                     "-n",
@@ -438,7 +577,21 @@ impl Collector for SmartCollector {
                     disk.dev_path.as_str(),
                 ]
             } else {
-                vec!["-n", "standby", "--json=c", "-a", disk.dev_path.as_str()]
+                vec![
+                    "-n",
+                    "standby",
+                    "--json=c",
+                    "-i",
+                    "-H",
+                    "-A",
+                    "-l",
+                    "selftest",
+                    "-l",
+                    "error",
+                    "-g",
+                    "all",
+                    disk.dev_path.as_str(),
+                ]
             };
 
             match ctx.cmd.run(SMARTCTL_BIN, &args, task.timeout).await {
@@ -450,7 +603,9 @@ impl Collector for SmartCollector {
                         &out.stdout,
                         &out.stderr,
                     );
-                    if let Some(r) = report {
+                    if task.group != "smart_temp"
+                        && let Some(r) = report
+                    {
                         res.smart_reports.push(r);
                     }
                     res.readings.extend(readings);

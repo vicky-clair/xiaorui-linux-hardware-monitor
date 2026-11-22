@@ -202,6 +202,37 @@ impl Collector for CpuCollector {
                     enabled: rapl_cap == CapabilityStatus::Supported,
                 });
             }
+            if ctx
+                .sysfs
+                .exists("/sys/devices/system/cpu/cpu0/thermal_throttle/package_throttle_count")
+            {
+                capabilities.push("thermal_throttle".into());
+                res.sensors.push(Sensor {
+                    sensor_id: sensor_id(&self.device_id, "throttle", "package"),
+                    device_id: self.device_id.clone(),
+                    sensor_type: SensorType::ErrorCount,
+                    sensor_name: "CPU Package Thermal Throttles".into(),
+                    source: "sysfs".into(),
+                    unit: Unit::Count,
+                    capability_status: CapabilityStatus::Supported,
+                    enabled: true,
+                });
+            }
+            if ctx
+                .sysfs
+                .exists("/sys/devices/system/cpu/cpu0/thermal_throttle/core_throttle_count")
+            {
+                res.sensors.push(Sensor {
+                    sensor_id: sensor_id(&self.device_id, "throttle", "cores"),
+                    device_id: self.device_id.clone(),
+                    sensor_type: SensorType::ErrorCount,
+                    sensor_name: "CPU Core Thermal Throttles (Sum)".into(),
+                    source: "sysfs".into(),
+                    unit: Unit::Count,
+                    capability_status: CapabilityStatus::Supported,
+                    enabled: true,
+                });
+            }
 
             res.devices.push(Device {
                 device_id: self.device_id.clone(),
@@ -433,9 +464,68 @@ impl Collector for CpuCollector {
                             unit: Unit::Watt,
                             quality: ReadingQuality::Valid,
                             source: "powercap".into(),
-                            collected_at: now,
+                            collected_at: now.clone(),
                         });
                     }
+                }
+            }
+
+            // 5. CPU Thermal Throttle counters (只读 sysfs，发现散热降频撞墙)
+            let pkg_throttle_path =
+                "/sys/devices/system/cpu/cpu0/thermal_throttle/package_throttle_count";
+            if ctx.sysfs.exists(pkg_throttle_path) {
+                let parsed = ctx
+                    .sysfs
+                    .read_to_string(pkg_throttle_path)
+                    .ok()
+                    .and_then(|s| s.trim().parse::<f64>().ok());
+                res.readings.push(SensorReading {
+                    schema_version: SCHEMA_VERSION.into(),
+                    host_id: ctx.host_id.clone(),
+                    device_id: self.device_id.clone(),
+                    sensor_id: sensor_id(&self.device_id, "throttle", "package"),
+                    metric: "thermal_throttle_count".into(),
+                    value: parsed,
+                    unit: Unit::Count,
+                    quality: if parsed.is_some() {
+                        ReadingQuality::Valid
+                    } else {
+                        ReadingQuality::SensorFault
+                    },
+                    source: "sysfs".into(),
+                    collected_at: now.clone(),
+                });
+            }
+
+            if let Ok(entries) = ctx.sysfs.read_dir_names("/sys/devices/system/cpu") {
+                let mut core_sum = 0.0;
+                let mut found = false;
+                for name in entries {
+                    if name.starts_with("cpu")
+                        && name[3..].bytes().all(|b| b.is_ascii_digit())
+                        && !name[3..].is_empty()
+                        && let Ok(raw) = ctx.sysfs.read_to_string(&format!(
+                            "/sys/devices/system/cpu/{name}/thermal_throttle/core_throttle_count"
+                        ))
+                        && let Ok(v) = raw.trim().parse::<f64>()
+                    {
+                        core_sum += v;
+                        found = true;
+                    }
+                }
+                if found {
+                    res.readings.push(SensorReading {
+                        schema_version: SCHEMA_VERSION.into(),
+                        host_id: ctx.host_id.clone(),
+                        device_id: self.device_id.clone(),
+                        sensor_id: sensor_id(&self.device_id, "throttle", "cores"),
+                        metric: "core_thermal_throttle_count".into(),
+                        value: Some(core_sum),
+                        unit: Unit::Count,
+                        quality: ReadingQuality::Valid,
+                        source: "sysfs".into(),
+                        collected_at: now,
+                    });
                 }
             }
 

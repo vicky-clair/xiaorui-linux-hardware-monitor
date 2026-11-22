@@ -709,6 +709,23 @@ data SmartReport = SmartReport
   , smartPercentageUsed :: Maybe Double
   , smartAvailableSpare :: Maybe Double
   , smartCriticalWarning :: Maybe Word64
+  , smartFirmwareVersion :: Maybe Text
+  , smartSerialNumber :: Maybe Text
+  , smartRotationRateRpm :: Maybe Word64
+  , smartSataLinkSpeed :: Maybe Text
+  , smartApmLevel :: Maybe Word64
+  , smartWriteCacheEnabled :: Maybe Bool
+  , smartTrimSupported :: Maybe Bool
+  , smartSelfTestPassed :: Maybe Bool
+  , smartSelfTestLastStatus :: Maybe Text
+  , smartSelfTestLastHours :: Maybe UintString
+  , smartErrorLogCount :: Maybe Word64
+  , smartMediaErrors :: Maybe UintString
+  , smartNumErrLogEntries :: Maybe UintString
+  , smartUnsafeShutdowns :: Maybe UintString
+  , smartWarningTempTimeMin :: Maybe Word64
+  , smartCriticalCompTimeMin :: Maybe Word64
+  , smartTemperatureSensorsCelsius :: Maybe [Double]
   , smartAttributes :: [SmartAttribute]
   , smartCollectedAt :: Text
   }
@@ -732,6 +749,23 @@ instance ToJSON SmartReport where
       , "percentage_used" .= smartPercentageUsed r
       , "available_spare" .= smartAvailableSpare r
       , "critical_warning" .= smartCriticalWarning r
+      , "firmware_version" .= smartFirmwareVersion r
+      , "serial_number" .= smartSerialNumber r
+      , "rotation_rate_rpm" .= smartRotationRateRpm r
+      , "sata_link_speed" .= smartSataLinkSpeed r
+      , "apm_level" .= smartApmLevel r
+      , "write_cache_enabled" .= smartWriteCacheEnabled r
+      , "trim_supported" .= smartTrimSupported r
+      , "self_test_passed" .= smartSelfTestPassed r
+      , "self_test_last_status" .= smartSelfTestLastStatus r
+      , "self_test_last_hours" .= smartSelfTestLastHours r
+      , "error_log_count" .= smartErrorLogCount r
+      , "media_errors" .= smartMediaErrors r
+      , "num_err_log_entries" .= smartNumErrLogEntries r
+      , "unsafe_shutdowns" .= smartUnsafeShutdowns r
+      , "warning_temp_time_min" .= smartWarningTempTimeMin r
+      , "critical_comp_time_min" .= smartCriticalCompTimeMin r
+      , "temperature_sensors_celsius" .= smartTemperatureSensorsCelsius r
       , "attributes" .= smartAttributes r
       , "collected_at" .= smartCollectedAt r
       ]
@@ -754,6 +788,23 @@ instance FromJSON SmartReport where
       <*> o .:? "percentage_used"
       <*> o .:? "available_spare"
       <*> o .:? "critical_warning"
+      <*> o .:? "firmware_version"
+      <*> o .:? "serial_number"
+      <*> o .:? "rotation_rate_rpm"
+      <*> o .:? "sata_link_speed"
+      <*> o .:? "apm_level"
+      <*> o .:? "write_cache_enabled"
+      <*> o .:? "trim_supported"
+      <*> o .:? "self_test_passed"
+      <*> o .:? "self_test_last_status"
+      <*> o .:? "self_test_last_hours"
+      <*> o .:? "error_log_count"
+      <*> o .:? "media_errors"
+      <*> o .:? "num_err_log_entries"
+      <*> o .:? "unsafe_shutdowns"
+      <*> o .:? "warning_temp_time_min"
+      <*> o .:? "critical_comp_time_min"
+      <*> o .:? "temperature_sensors_celsius"
       <*> o .: "attributes"
       <*> o .: "collected_at"
 

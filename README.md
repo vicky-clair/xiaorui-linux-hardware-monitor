@@ -21,7 +21,7 @@
 
 | 维度 | 核心能力 |
 | ---- | -------- |
-| **硬件真实采集** | 原生 Rust Agent 覆盖 `hwmon`、`thermal_zone`、CPU 频率/负载与 Intel RAPL 封装功耗、内存与 EDAC、SATA/USB 磁盘 SMART（`-n standby` 绝不唤醒待机盘）、NVMe 128-bit 精确计数、Intel/AMD/NVIDIA（动态加载 NVML）GPU 遥测。 |
+| **硬件真实采集** | 原生 Rust Agent 覆盖 `hwmon`、`thermal_zone`、CPU 频率/负载/过热降频计数与 Intel RAPL 封装功耗、内存与 EDAC、物理网卡链路速率/错包统计、持久化分区容量与使用率、SATA/USB 磁盘扩展 SMART（固件/转速/APM/自检历史/三语属性释义，`-n standby` 绝不唤醒待机盘）、NVMe 128-bit 与介质错误/异常断电全字段、Intel/AMD/NVIDIA（动态加载 NVML）GPU 遥测。 |
 | **可解释健康分析** | 独立无状态 **Haskell 纯函数引擎**：四级阈值优先级、趋势识别、抗离群值污染的鲁棒 **MAD 异常检测**与单步突变检测、高温+停转风扇关联分析、5% 滞回防抖告警状态机，以及带扣分依据的 `0–100` 健康评分。 |
 | **多主题可视化与三语切换** | React + ECharts 控制台，内置 **6 套深色/浅色背景主题**（深海蓝灰 / 极夜曜石黑 / 静谧森绿 / 暮光紫韵 / 晨曦浅白 / 护眼米白，自动联动图表配色与 `localStorage` 持久化）及 **中文 / English / 日本語** 实时切换；支持总览页一键**「立即全局健康检测」**、全局红/橙色告警横幅、侧边栏计数角标与异常行红字高亮。 |
 | **安全与极低开销** | 全非 root 容器（`cap_drop: ALL`、`no-new-privileges`、无 `privileged`、无 host network）；`systemd` 非 root 沙箱实测 **`4.7 OK`**；分级调度 + `Nice=10` / `IOSchedulingClass=idle`；Argon2id 认证、RBAC、审计日志、CSV 防公式注入导出、SSRF 防护 + HMAC-SHA256 Webhook。 |

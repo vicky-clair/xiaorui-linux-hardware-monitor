@@ -180,7 +180,34 @@ export interface SmartSummary {
   percentageUsed: number | null;
   availableSpare: number | null;
   criticalWarning: number | null;
+  firmwareVersion?: string | null;
+  serialNumber?: string | null;
+  rotationRateRpm?: number | null;
+  sataLinkSpeed?: string | null;
+  apmLevel?: number | null;
+  writeCacheEnabled?: boolean | null;
+  trimSupported?: boolean | null;
+  selfTestPassed?: boolean | null;
+  selfTestLastStatus?: string | null;
+  selfTestLastHours?: string | null;
+  errorLogCount?: number | null;
+  mediaErrors?: string | null;
+  numErrLogEntries?: string | null;
+  unsafeShutdowns?: string | null;
+  warningTempTimeMin?: number | null;
+  criticalCompTimeMin?: number | null;
+  temperatureSensorsCelsius?: number[] | null;
   collectedAt: string;
+}
+
+export interface MountUsageRow {
+  mountpoint: string;
+  fstype: string | null;
+  usagePercent: number | null;
+  usedBytes: number | null;
+  availBytes: number | null;
+  totalBytes: number | null;
+  collectedAt: string | null;
 }
 
 export interface SmartAttributeRow {
@@ -196,6 +223,7 @@ export interface SmartAttributeRow {
 export interface StorageItem {
   device: DeviceRow;
   latest_smart: SmartSummary | null;
+  mounts?: MountUsageRow[];
 }
 
 export interface StorageSmartDetail {

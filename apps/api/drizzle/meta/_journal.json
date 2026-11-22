@@ -8,6 +8,13 @@
       "when": 1795160055054,
       "tag": "0000_init_v1",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795332400000,
+      "tag": "0001_smart_extended_telemetry",
+      "breakpoints": true
     }
   ]
 }

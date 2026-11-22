@@ -2,6 +2,7 @@ use agent_collectors::default_collectors;
 use agent_collectors::gpu::GpuCollector;
 use agent_collectors::nvme::NVME_BIN;
 use agent_collectors::smart::SMARTCTL_BIN;
+use agent_collectors::storage::DF_BIN;
 use agent_core::collector::CollectorContext;
 use agent_core::command::{CommandOutput, MockCommandRunner};
 use agent_core::scheduler::AgentRunner;
@@ -38,7 +39,33 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
         "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq",
         "2000000\n",
     )
+    .add_file(
+        "/sys/devices/system/cpu/cpu0/thermal_throttle/package_throttle_count",
+        "2\n",
+    )
+    .add_file(
+        "/sys/devices/system/cpu/cpu0/thermal_throttle/core_throttle_count",
+        "5\n",
+    )
     .add_permission_denied("/sys/class/powercap/intel-rapl:0/energy_uj");
+
+    // Physical NIC (enp1s0) + virtual docker0 (must be ignored)
+    fs.add_symlink(
+        "/sys/class/net/enp1s0/device",
+        "/sys/devices/pci0000:00/0000:00:1f.6",
+    )
+    .add_symlink(
+        "/sys/class/net/enp1s0/device/driver",
+        "/sys/bus/pci/drivers/r8169",
+    )
+    .add_file("/sys/class/net/enp1s0/operstate", "up\n")
+    .add_file("/sys/class/net/enp1s0/speed", "1000\n")
+    .add_file("/sys/class/net/enp1s0/statistics/rx_errors", "0\n")
+    .add_file("/sys/class/net/enp1s0/statistics/tx_errors", "0\n")
+    .add_file("/sys/class/net/enp1s0/statistics/rx_dropped", "3\n")
+    .add_file("/sys/class/net/enp1s0/statistics/tx_dropped", "0\n")
+    .add_file("/sys/class/net/enp1s0/statistics/rx_crc_errors", "0\n")
+    .add_file("/sys/class/net/docker0/operstate", "up\n");
 
     // Memory
     fs.add_file(
@@ -120,13 +147,43 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
         .add_file("/sys/block/nvme0n1/queue/rotational", "0\n")
         .add_file("/sys/block/nvme0n1/size", "1953525168\n");
 
+    // Mock df output for mounted filesystems
+    let df_out = "\
+Filesystem     Type     1B-blocks         Used    Available Capacity Mounted on
+/dev/sda2      ext4  242000000000 100000000000 130000000000      44% /
+/dev/sdb1      fuseblk 1000000000000 900000000000 100000000000   90% /media/usb
+tmpfs          tmpfs    4000000000      1000000   3999000000       1% /run
+";
+    cmd.register(
+        DF_BIN,
+        &["-B1", "-T", "-P"],
+        Ok(CommandOutput {
+            exit_code: 0,
+            stdout: df_out.into(),
+            stderr: String::new(),
+        }),
+    );
+
     // Mock smartctl outputs
     let sda_smart = r#"{
       "device": {"protocol": "ATA"},
+      "firmware_version": "H220829a",
+      "serial_number": "SN-SIM-001",
+      "rotation_rate": 0,
+      "interface_speed": {"current": {"string": "6.0 Gb/s"}},
+      "ata_apm": {"level": 254},
+      "ata_write_cache": {"enabled": true},
+      "trim": {"supported": true},
       "smart_status": {"passed": true},
       "temperature": {"current": 36},
       "power_on_time": {"hours": 4200},
       "power_cycle_count": 120,
+      "ata_smart_self_test_log": {
+        "standard": {
+          "table": [{"status": {"string": "Completed without error", "passed": true}, "lifetime_hours": 4100}]
+        }
+      },
+      "ata_smart_error_log": {"summary": {"count": 0}},
       "ata_smart_attributes": {
         "table": [
           {"id": 5, "name": "Reallocated_Sector_Ct", "value": 100, "worst": 100, "thresh": 10, "raw": {"value": 0, "string": "0"}}
@@ -144,7 +201,10 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
     )
     .register(
         SMARTCTL_BIN,
-        &["-n", "standby", "--json=c", "-a", "/dev/sda"],
+        &[
+            "-n", "standby", "--json=c", "-i", "-H", "-A", "-l", "selftest", "-l", "error", "-g",
+            "all", "/dev/sda",
+        ],
         Ok(CommandOutput {
             exit_code: 0,
             stdout: sda_smart.into(),
@@ -170,7 +230,10 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
     )
     .register(
         SMARTCTL_BIN,
-        &["-n", "standby", "--json=c", "-a", "/dev/sdb"],
+        &[
+            "-n", "standby", "--json=c", "-i", "-H", "-A", "-l", "selftest", "-l", "error", "-g",
+            "all", "/dev/sdb",
+        ],
         Ok(CommandOutput {
             exit_code: 2,
             stdout: sdb_standby.into(),
@@ -196,7 +259,21 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
     )
     .register(
         SMARTCTL_BIN,
-        &["-n", "standby", "--json=c", "-a", "/dev/nvme0n1"],
+        &[
+            "-n",
+            "standby",
+            "--json=c",
+            "-i",
+            "-H",
+            "-A",
+            "-l",
+            "selftest",
+            "-l",
+            "error",
+            "-g",
+            "all",
+            "/dev/nvme0n1",
+        ],
         Ok(CommandOutput {
             exit_code: 2,
             stdout: perm_denied.into(),
@@ -212,7 +289,14 @@ fn build_simulated_host() -> (Arc<MockSysFs>, Arc<MockCommandRunner>) {
       "data_units_read": "340282366920938463463374607431768211455",
       "data_units_written": "18446744073709551616",
       "power_cycles": 88,
-      "power_on_hours": 1500
+      "power_on_hours": 1500,
+      "unsafe_shutdowns": 7,
+      "media_errors": 0,
+      "num_err_log_entries": 1,
+      "warning_temp_time": 0,
+      "critical_comp_time": 0,
+      "temperature_sensor_1": 312,
+      "temperature_sensor_2": 318
     }"#;
     cmd.register(
         NVME_BIN,
@@ -324,7 +408,17 @@ async fn full_simulated_hardware_discovery_and_collection() {
     assert_eq!(standby_report.device_status, DeviceStatus::Standby);
     assert_eq!(standby_report.temperature_celsius, None);
 
-    // 6. Verify NVMe 128-bit counter preserved as exact decimal string
+    // 6. Verify extended SMART metadata, NVMe full fields, mountpoint usage, CPU throttle & physical NIC
+    let sda_report = snap
+        .smart_reports
+        .iter()
+        .find(|r| r.device_path == "/dev/sda")
+        .expect("sda extended smart report");
+    assert_eq!(sda_report.firmware_version.as_deref(), Some("H220829a"));
+    assert_eq!(sda_report.apm_level, Some(254));
+    assert_eq!(sda_report.self_test_passed, Some(true));
+    assert_eq!(sda_report.trim_supported, Some(true));
+
     let nvme_report = snap
         .smart_reports
         .iter()
@@ -335,6 +429,44 @@ async fn full_simulated_hardware_discovery_and_collection() {
         Some("340282366920938463463374607431768211455")
     );
     assert_eq!(nvme_report.temperature_celsius, Some(38.9));
+    assert_eq!(
+        nvme_report.unsafe_shutdowns.as_ref().map(|v| v.as_str()),
+        Some("7")
+    );
+    assert_eq!(
+        nvme_report.media_errors.as_ref().map(|v| v.as_str()),
+        Some("0")
+    );
+    assert_eq!(
+        nvme_report.temperature_sensors_celsius,
+        Some(vec![38.9, 44.9])
+    );
+
+    // Mountpoint usage (90% on /media/usb)
+    assert!(
+        snap.readings
+            .iter()
+            .any(|r| r.metric == "fs_usage_percent" && r.value == Some(90.0))
+    );
+    // CPU thermal throttle count
+    assert!(
+        snap.readings
+            .iter()
+            .any(|r| r.metric == "thermal_throttle_count" && r.value == Some(2.0))
+    );
+    // Physical NIC discovered (docker0 excluded) with 1000 Mbps link speed and rx_dropped=3
+    assert!(snap.devices.iter().any(|d| d.name == "NIC (enp1s0)"));
+    assert!(!snap.devices.iter().any(|d| d.name.contains("docker0")));
+    assert!(
+        snap.readings
+            .iter()
+            .any(|r| r.metric == "nic_link_speed" && r.value == Some(125_000_000.0))
+    );
+    assert!(
+        snap.readings
+            .iter()
+            .any(|r| r.metric == "nic_rx_dropped" && r.value == Some(3.0))
+    );
 
     // 7. Verify ALL produced readings satisfy protocol invariants (valid => Some, missing => None)
     for reading in &snap.readings {

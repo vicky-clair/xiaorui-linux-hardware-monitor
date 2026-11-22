@@ -72,6 +72,26 @@ impl NvmeCollector {
         let smart_passed = critical_warning.map(|cw| cw == 0);
         let percentage_used = json.get("percent_used").and_then(|v| v.as_f64());
         let available_spare = json.get("avail_spare").and_then(|v| v.as_f64());
+        let media_errors = Self::extract_uint(json.get("media_errors"));
+        let num_err_log_entries = Self::extract_uint(json.get("num_err_log_entries"));
+        let unsafe_shutdowns = Self::extract_uint(json.get("unsafe_shutdowns"));
+        let warning_temp_time_min = json.get("warning_temp_time").and_then(|v| v.as_u64());
+        let critical_comp_time_min = json.get("critical_comp_time").and_then(|v| v.as_u64());
+        let mut temp_sensors = Vec::new();
+        for idx in 1..=8 {
+            let key = format!("temperature_sensor_{idx}");
+            if let Some(raw_t) = json.get(&key).and_then(|v| v.as_f64())
+                && raw_t > 0.0
+            {
+                let c = if raw_t > 200.0 { raw_t - 273.15 } else { raw_t };
+                temp_sensors.push((c * 10.0).round() / 10.0);
+            }
+        }
+        let temperature_sensors_celsius = if temp_sensors.is_empty() {
+            None
+        } else {
+            Some(temp_sensors)
+        };
 
         let report = SmartReport {
             schema_version: SCHEMA_VERSION.into(),
@@ -89,6 +109,25 @@ impl NvmeCollector {
             percentage_used,
             available_spare,
             critical_warning,
+            firmware_version: None,
+            serial_number: disk.serial.clone(),
+            rotation_rate_rpm: Some(0),
+            sata_link_speed: None,
+            apm_level: None,
+            write_cache_enabled: None,
+            trim_supported: Some(true),
+            self_test_passed: None,
+            self_test_last_status: None,
+            self_test_last_hours: None,
+            error_log_count: num_err_log_entries
+                .as_ref()
+                .and_then(|u| u.as_str().parse::<u64>().ok()),
+            media_errors,
+            num_err_log_entries,
+            unsafe_shutdowns,
+            warning_temp_time_min,
+            critical_comp_time_min,
+            temperature_sensors_celsius,
             attributes: Vec::new(),
             collected_at: now.clone(),
         };

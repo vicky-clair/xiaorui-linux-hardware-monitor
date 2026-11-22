@@ -40,6 +40,9 @@ describe("Reading formatting & null-vs-zero invariants", () => {
     expect(formatReadingValue(0, "hertz", "valid")).toBe("0 Hz");
     expect(formatReadingValue(42.5, "celsius", "valid")).toBe("42.50 °C");
     expect(formatReadingValue(200_000_000, "hertz", "valid")).toBe("200 MHz");
+    expect(formatReadingValue(125_000_000, "byte_per_second", "valid")).toBe(
+      "1000 Mbps (125 MB/s)",
+    );
   });
 
   test("maps long time ranges to aggregated API granularities", () => {
@@ -256,17 +259,94 @@ describe("Core page rendering", () => {
               percentageUsed: null,
               availableSpare: null,
               criticalWarning: null,
+              firmwareVersion: "JB0OA3J0",
+              apmLevel: 254,
               collectedAt: "2026-11-20T10:00:00Z",
             },
+            mounts: [
+              {
+                mountpoint: "/media/usb",
+                fstype: "fuseblk",
+                usagePercent: 90,
+                usedBytes: 900_000_000_000,
+                availBytes: 100_000_000_000,
+                totalBytes: 1_000_000_000_000,
+                collectedAt: "2026-11-20T10:00:00Z",
+              },
+            ],
           },
         ]}
-        selectedSmart={null}
+        selectedSmart={{
+          device: {
+            deviceId: "disk-hdd-1",
+            hostId: "host-1",
+            deviceType: "storage",
+            vendor: "HGST",
+            model: "HDD",
+            name: "HDD (sdb)",
+            capabilities: ["capacity"],
+            deviceStatus: "online",
+            firstSeenAt: "2026-11-20T10:00:00Z",
+            lastSeenAt: "2026-11-20T10:00:00Z",
+          },
+          latest: {
+            id: 2,
+            deviceId: "disk-hdd-1",
+            devicePath: "/dev/sdb",
+            protocolType: "ata",
+            deviceStatus: "online",
+            smartPassed: true,
+            temperatureCelsius: 34,
+            powerOnHours: "14110",
+            powerCycles: "939",
+            dataUnitsRead: null,
+            dataUnitsWritten: null,
+            percentageUsed: null,
+            availableSpare: null,
+            criticalWarning: null,
+            firmwareVersion: "JB0OA3J0",
+            rotationRateRpm: 7200,
+            apmLevel: 254,
+            selfTestPassed: true,
+            selfTestLastStatus: "Completed without error",
+            selfTestLastHours: "11468",
+            errorLogCount: 0,
+            collectedAt: "2026-11-20T10:00:00Z",
+            attributes: [
+              {
+                attrId: 5,
+                name: "Reallocated_Sector_Ct",
+                value: 100,
+                worst: 100,
+                threshold: 5,
+                rawValue: "0",
+                rawString: "0",
+              },
+              {
+                attrId: 194,
+                name: "Temperature_Celsius",
+                value: 176,
+                worst: 176,
+                threshold: 0,
+                rawValue: "34",
+                rawString: "34 (Min/Max 15/52)",
+              },
+            ],
+          },
+          history: [],
+        }}
         onSelect={() => {}}
       />,
     );
     expect(storageHtml).toContain("待机跳过（未唤醒）");
     expect(storageHtml).toContain("340282366920938463463374607431768211455");
     expect(storageHtml).toContain("— (无数据)");
+    expect(storageHtml).toContain("/media/usb");
+    expect(storageHtml).toContain("90.0%");
+    expect(storageHtml).toContain("JB0OA3J0");
+    expect(storageHtml).toContain("7200 RPM");
+    expect(storageHtml).toContain("重映射扇区数");
+    expect(storageHtml).toContain("34 (Min/Max 15/52)");
 
     const viewerConfigHtml = renderToStaticMarkup(
       <ConfigView
