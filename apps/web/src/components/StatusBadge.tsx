@@ -1,3 +1,4 @@
+// 四维正交状态徽章组件：分别展示 capability_status、device_status、quality 与 severity，杜绝语义混用。
 import type {
   CapabilityStatus,
   DeviceStatus,

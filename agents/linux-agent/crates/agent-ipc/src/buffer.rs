@@ -1,3 +1,5 @@
+//! IPC 断线重连有界内存缓冲队列（ADR-0003）：支持高优先级报文保护、超限淘汰与结构化丢弃诊断上报，防止断连期间内存无限增长。
+
 use agent_core::utc_now_rfc3339;
 use lhm_protocol::{
     Diagnostic, DiagnosticLevel, IpcMessage, IpcMessageType, PROTOCOL_NAME, SCHEMA_VERSION,

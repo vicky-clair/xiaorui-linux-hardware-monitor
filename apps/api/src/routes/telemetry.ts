@@ -1,3 +1,4 @@
+// 硬件遥测查询路由：提供总览、设备列表与身份详情、传感器读数（raw/1m/1h）、存储/SMART 详情、覆盖率与诊断日志接口。
 import { Elysia } from "elysia";
 import type { AuthService } from "../auth/service.ts";
 import type { ApiConfig } from "../config/env.ts";

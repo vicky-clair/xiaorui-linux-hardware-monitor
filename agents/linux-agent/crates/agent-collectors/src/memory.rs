@@ -1,3 +1,5 @@
+//! 内存与 EDAC 纠错采集器：只读 `/proc/meminfo` 与可选 `/sys/devices/system/edac/mc` 统计总内存、可用内存、Swap 使用率及 ECC 纠错计数。
+
 use agent_core::collector::{
     BoxFuture, CollectResult, CollectionTask, Collector, CollectorContext, DiscoveryResult,
 };

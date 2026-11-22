@@ -1,3 +1,4 @@
+// 系统配置页：支持管理员调整数据过期阈值、保留期及 Webhook 通知（带 SSRF 校验与测试推送），viewer 角色自动只读提示。
 import { useEffect, useState, type FormEvent } from "react";
 import {
   api,

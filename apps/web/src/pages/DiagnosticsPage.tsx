@@ -1,3 +1,4 @@
+// 采集器运行状态与结构化诊断日志页：以当前语言翻译错误码与修复建议，清晰区分权限限制与硬件异常。
 import { useEffect, useState } from "react";
 import {
   api,

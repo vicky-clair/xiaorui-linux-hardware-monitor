@@ -1,3 +1,5 @@
+//! Linux `/sys` 与 `/proc` 只读文件访问抽象：提供生产环境 `RealSysFs` 与硬件故障模拟测试专用 `MockSysFs`。
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;

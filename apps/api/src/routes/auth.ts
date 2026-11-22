@@ -1,3 +1,4 @@
+// 认证与管理路由：包含首次管理员引导、登录/登出、当前用户查询、用户管理及系统配置读写（敏感项自动脱敏）。
 import { Elysia } from "elysia";
 import {
   AuthError,

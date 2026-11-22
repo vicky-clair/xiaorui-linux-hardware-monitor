@@ -1,3 +1,5 @@
+//! Intel GPU（i915 / xe）采集模块：只读 DRM sysfs 频率、共享/独立显存与可选 hwmon 传感器，零频率空闲按有效 0 上报。
+
 use super::DiscoveredGpu;
 use agent_core::collector::{CollectResult, CollectorContext};
 use agent_core::identity::sensor_id;

@@ -1,3 +1,4 @@
+// WebSocket 实时数据流 Hook：自动维护断线重连状态与按 sensor_id 索引的最新传感器读数缓存。
 import { useEffect, useState } from "react";
 import type { SensorReading } from "@lhm/protocol/types";
 

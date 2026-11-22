@@ -1,3 +1,4 @@
+// 登录与首次初始化管理员页：支持一次性引导令牌建号、账户登录、6 套主题色块与三语即时切换。
 import { useState, type FormEvent } from "react";
 import { api, ApiClientError, type UserInfo } from "../lib/api.ts";
 import { LanguageSwitcher, useI18n } from "../lib/i18n.tsx";

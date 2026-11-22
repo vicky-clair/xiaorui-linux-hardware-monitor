@@ -1,3 +1,4 @@
+// 告警规则、Haskell 状态机快照、告警历史、分析结果持久化及 Webhook 通知配置仓储。
 import { and, desc, eq } from "drizzle-orm";
 import type {
   AlertRuleSpec,

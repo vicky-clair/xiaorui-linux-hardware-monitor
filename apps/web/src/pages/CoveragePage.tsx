@@ -1,3 +1,4 @@
+// 传感器覆盖率审计页：逐设备列出已支持、权限不足、硬件不支持与已过期指标，帮助快速排查权限与硬件能力边界。
 import { useEffect, useState } from "react";
 import { api, ApiClientError, type CoverageResponse } from "../lib/api.ts";
 import { formatLocalTime } from "../lib/format.ts";

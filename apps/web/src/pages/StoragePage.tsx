@@ -1,3 +1,4 @@
+// 存储健康与 SMART / NVMe 监控页：展示持久化分区容量进度条、硬盘运行特征/自检记录、NVMe 扩展健康与三语 SMART 属性明细。
 import { useEffect, useState } from "react";
 import {
   api,

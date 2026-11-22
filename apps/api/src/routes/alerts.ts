@@ -1,3 +1,4 @@
+// 告警管理、规则增删改与 Haskell 健康分析按需触发 REST 路由（写操作仅限 admin 并写入审计日志）。
 import { Elysia } from "elysia";
 import type {
   AlertRuleSpec,

@@ -1,3 +1,5 @@
+//! GPU 统一发现与分发模块：基于 `/sys/class/drm/card*` PCI 厂商 ID 自动分派 Intel / AMD / NVIDIA 采集器，并使用稳定 PCI BDF 作为设备 ID。
+
 pub mod amd;
 pub mod intel;
 pub mod nvidia;

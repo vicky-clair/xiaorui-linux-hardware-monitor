@@ -1,3 +1,4 @@
+-- | 告警阈值比较与 5% 滞回防抖规则求值模块（纯函数），避免传感器在临界值附近抖动引发告警风暴。
 module Health.Rules
   ( evaluateOperator
   , evaluateWithHysteresis

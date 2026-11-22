@@ -1,3 +1,4 @@
+// 控制台统一状态展示组件：加载态、空数据、请求失败重试、权限不足说明与 WebSocket 实时连接状态条。
 import type { WsConnectionState } from "../lib/ws.ts";
 import { useI18n } from "../lib/i18n.tsx";
 

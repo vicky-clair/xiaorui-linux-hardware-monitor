@@ -1,3 +1,4 @@
+-- | 健康分析引擎内部只读配置与版本元数据定义（无 IO、无全局可变状态）。
 {-# LANGUAGE OverloadedStrings #-}
 
 module Health.Types

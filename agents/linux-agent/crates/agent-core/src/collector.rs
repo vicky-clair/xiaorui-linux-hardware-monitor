@@ -1,3 +1,5 @@
+//! 采集器统一生命周期 Trait 与调度任务定义（ADR-0008）：规范 `discover`、`collect`、`health_check`、`diagnostics` 接口及单任务隔离模型。
+
 use crate::command::CommandRunner;
 use crate::sysfs::SysFs;
 use lhm_protocol::{

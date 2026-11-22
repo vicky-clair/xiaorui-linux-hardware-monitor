@@ -1,3 +1,5 @@
+//! Linux ACPI / 平台热区采集器：只读 `/sys/class/thermal/thermal_zone*` 温度通道，并将毫摄氏度按内核规范换算为摄氏度。
+
 use agent_core::collector::{
     BoxFuture, CollectResult, CollectionTask, Collector, CollectorContext, DiscoveryResult,
 };

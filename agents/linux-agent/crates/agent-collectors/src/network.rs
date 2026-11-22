@@ -18,9 +18,6 @@ use std::time::Duration;
 struct DiscoveredNic {
     iface: String,
     device_id: String,
-    stable: bool,
-    pci_bus_id: Option<String>,
-    topology: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -186,13 +183,7 @@ impl Collector for NetworkCollector {
                         }
                     }
 
-                    nics.push(DiscoveredNic {
-                        iface,
-                        device_id,
-                        stable,
-                        pci_bus_id,
-                        topology,
-                    });
+                    nics.push(DiscoveredNic { iface, device_id });
                 }
             }
 
@@ -304,16 +295,6 @@ impl Collector for NetworkCollector {
                     });
                 }
             }
-
-            let _ = (
-                &self.host_id,
-                self.state
-                    .read()
-                    .expect("lock")
-                    .nics
-                    .first()
-                    .map(|n| (&n.stable, &n.pci_bus_id, &n.topology)),
-            );
 
             res
         })

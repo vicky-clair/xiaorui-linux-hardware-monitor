@@ -1,3 +1,5 @@
+//! Rust 硬件采集器集合入口：统一注册 CPU、GPU、hwmon、thermal、内存、存储/分区、SMART、NVMe 与物理网卡 9 类采集器。
+
 pub mod cpu;
 pub mod gpu;
 pub mod hwmon;

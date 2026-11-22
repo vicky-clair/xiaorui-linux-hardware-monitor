@@ -6,9 +6,9 @@
 
 ### 1.1 CPU
 
-温度（Package / Core / CCD，支持时）、频率、使用率、负载、功耗（支持时，如 RAPL）、节流状态（接口支持时）。
+温度（Package / Core / CCD，支持时）、频率、使用率、负载、功耗（支持时，如 Intel RAPL；间隔 > 60s 时自动采用 500ms 短双采样避免 32-bit 计数器回绕）、过热降频计数（`/sys/devices/system/cpu/*/thermal_throttle/{package,core}_throttle_count`，接口支持时）。
 
-数据源：`/sys/class/hwmon/`、`/sys/class/thermal/`、`/proc/stat`、`/proc/loadavg`、CPU 驱动接口（如 coretemp、k10temp）。
+数据源：`/sys/class/hwmon/`、`/sys/class/thermal/`、`/sys/class/powercap/intel-rapl:0/`、`/sys/devices/system/cpu/*/thermal_throttle/`、`/proc/stat`、`/proc/loadavg`、CPU 驱动接口（如 coretemp、k10temp）。
 
 ### 1.2 GPU
 
@@ -34,24 +34,26 @@
 
 总量、已用、可用、Swap、使用率、EDAC 错误统计（支持时）、DIMM 温度（需内存模块传感器与平台驱动支持，不保证可读）。
 
-### 1.5 存储
+### 1.5 存储与持久化分区容量
 
-HDD、SATA SSD、NVMe：型号、容量、温度、SMART 总体状态、SMART 属性、通电时间 / 次数、重映射 / 待映射扇区、不可校正错误、CRC 错误、NVMe Critical Warning、Media Errors、Percentage Used、Available Spare。
+- **块设备与 SMART / NVMe**：HDD、SATA SSD、NVMe 的型号、容量、温度、SMART 总体状态、固件版本、序列号、转速、SATA 协商速率、当前 APM 档位、写缓存/TRIM、最近盘内自检状态与小时数、错误日志计数、全部 SMART 原始属性（含 `raw_value` 与 `raw_string`）、通电时间/次数、重映射/待映射/不可校正/CRC 错误，以及 NVMe `critical_warning`、`media_errors`、`num_err_log_entries`、`unsafe_shutdowns`、`percentage_used`、`available_spare`、过热/严重高温时长与多点温度传感器。
+- **持久化挂载点空间**：通过白名单只读 `/usr/bin/df -B1 -T -P` 采集持久化挂载点（如 `/`、`/media/usb`，过滤 `tmpfs`/`overlay`/Docker 挂载）的总容量、已用、可用与使用率 `%`，并绑定至所属物理磁盘稳定 ID（仅读内核超级块元数据，不唤醒待机机械盘）。
 
 规则：
 
-- 使用 **`smartctl --json`**（smartmontools ≥ 7.0）与 **nvme-cli JSON 输出**，不得解析人类可读文本。
+- 使用 **`smartctl -n standby --json=c -i -H -A -l selftest -l error -g all`**（smartmontools ≥ 7.0，跳过慢速 `-x` 扩展页）与 **nvme-cli JSON 输出**，不得解析人类可读文本。
 - **HDD 必须使用 `smartctl -n standby`**（或等效机制）：处于待机的硬盘跳过本次采集，报告 `device_status = standby`，不得唤醒硬盘，不得报告为离线或故障。
-- 必须保留 SMART 原始属性（含 raw 值），不得只保存健康百分比。
-- NVMe 128 位计数器（如 Data Units Read/Written）按协议规定以十进制字符串传输。
+- 必须保留 SMART 原始属性（含 raw 值与 `raw_string`），不得只保存健康百分比。
+- NVMe 128 位计数器（如 Data Units Read/Written、`media_errors`、`unsafe_shutdowns`）按协议规定以十进制字符串传输。
 
 ### 1.6 风扇、电压、功耗
 
-转速、最低转速、风扇状态、电压及上下限、电源功率（支持时）。接口：hwmon；IPMI / Redfish 属于阶段 6。普通电源通常不提供数字遥测。
+转速、最低转速、风扇状态、电压及上下限、电源功率（支持时）。接口：hwmon；IPMI / Redfish 属于阶段 6（ADR-0010 草案）。普通电源通常不提供数字遥测。
 
-### 1.7 系统资源
+### 1.7 物理网络接口与系统资源
 
-CPU / 内存使用率、磁盘读写、网络流量、运行时间、负载、系统版本、内核版本。接口：procfs、sysfs。
+- **物理网卡（`network` 采集器）**：只读 `/sys/class/net/<iface>`，通过物理设备节点存在性过滤 `lo`/`docker*`/`br-*`/`veth*` 等虚拟接口，采集在线状态（`operstate`）、协商速率（`speed`，离线或无速率时上报 `null`）与 `statistics/{rx_errors,tx_errors,rx_dropped,tx_dropped,rx_crc_errors}`，以 PCI BDF 或接口名生成稳定 ID。
+- **系统资源**：CPU / 内存使用率、运行时间、负载、系统版本、内核版本。接口：procfs、sysfs。
 
 ## 2. 硬件发现
 

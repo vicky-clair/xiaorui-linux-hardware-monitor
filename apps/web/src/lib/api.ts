@@ -1,3 +1,4 @@
+// 前端 REST API 客户端与响应类型定义：统一携带 Cookie 鉴权凭证、解析统一信封并处理结构化错误码。
 import type {
   CapabilityStatus,
   DeviceStatus,

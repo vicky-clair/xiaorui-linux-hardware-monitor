@@ -1,3 +1,4 @@
+-- | 多传感器跨指标关联分析模块（纯函数）：识别如高温伴随风扇停转（0 RPM）等复合硬件风险。
 {-# LANGUAGE OverloadedStrings #-}
 
 module Health.Correlation

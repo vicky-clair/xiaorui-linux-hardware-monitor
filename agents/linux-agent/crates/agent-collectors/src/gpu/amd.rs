@@ -1,3 +1,5 @@
+//! AMD GPU 采集模块：只读 `amdgpu` DRM sysfs 与其挂载的 hwmon 传感器（温度/热点/利用率/显存/频率/功耗/风扇）。
+
 use super::DiscoveredGpu;
 use agent_core::collector::{CollectResult, CollectorContext};
 use agent_core::identity::sensor_id;

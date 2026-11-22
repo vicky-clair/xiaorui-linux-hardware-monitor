@@ -1,3 +1,5 @@
+//! 传感器覆盖率汇总辅助模块：按设备聚合已支持、硬件不支持、权限不足与异常通道，支撑覆盖率审计报表。
+
 use lhm_protocol::{CapabilityStatus, Device, ReadingQuality, Sensor, SensorReading, SensorType};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

@@ -1,3 +1,4 @@
+// 健康评分与分析页：展示 Haskell 引擎下发的可解释 0-100 评分、扣分依据、MAD/突变异常与跨传感器关联（前端不做推断）。
 import { useEffect, useState } from "react";
 import {
   api,

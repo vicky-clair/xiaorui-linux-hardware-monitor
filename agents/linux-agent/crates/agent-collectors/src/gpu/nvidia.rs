@@ -1,3 +1,5 @@
+//! NVIDIA GPU 采集模块：严格遵循 ADR 约束，运行时通过 `libloading` 动态加载 `libnvidia-ml.so.1`（无编译期硬依赖）；库缺失时如实上报 `unsupported`。
+
 use super::DiscoveredGpu;
 use agent_core::collector::{CollectResult, CollectorContext};
 use agent_core::identity::sensor_id;

@@ -1,3 +1,4 @@
+// REST API 统一响应信封与请求追踪 ID 封装（成功/错误响应遵循 docs/api/api-spec.md 规范）。
 export interface ApiErrorBody {
   code: string;
   message: string;

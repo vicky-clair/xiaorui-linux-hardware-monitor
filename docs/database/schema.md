@@ -17,8 +17,8 @@
 | sensor_readings | 原始采样 |
 | sensor_readings_1m | 1 分钟聚合（min / max / avg / count） |
 | sensor_readings_1h | 1 小时聚合 |
-| smart_devices | SMART 设备 |
-| smart_attributes | SMART 属性历史（保留 raw 值） |
+| smart_devices | SMART 设备与扩展元信息（含协议 v1.2 的固件/转速/APM/自检/NVMe 介质错误与异常断电列，通过 `0001_smart_extended_telemetry.sql` 迁移追加） |
+| smart_attributes | SMART 属性历史（保留 raw 值与可读 `raw_string`） |
 | collector_status | 采集器状态 |
 | ipc_cursors | 每个 Agent 实例最近处理的 sequence（用于去重） |
 | health_events | 设备状态变化等事件 |

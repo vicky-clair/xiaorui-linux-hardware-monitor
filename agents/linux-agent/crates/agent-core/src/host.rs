@@ -1,3 +1,5 @@
+//! 宿主机身份发现模块：基于 `/etc/machine-id`、主机名、`/etc/os-release` 与 `/proc/uptime` 生成稳定的单主机档案。
+
 use crate::agent_info;
 use crate::identity::build_stable_id;
 use crate::sysfs::SysFs;

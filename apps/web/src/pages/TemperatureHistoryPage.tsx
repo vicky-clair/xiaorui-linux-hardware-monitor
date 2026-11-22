@@ -1,3 +1,4 @@
+// 温度历史曲线与安全导出页：支持 15m/1h/6h/24h/7d 多粒度聚合查询、ECharts 断点曲线渲染及 CSV/JSON 导出。
 import { useEffect, useState } from "react";
 import {
   api,

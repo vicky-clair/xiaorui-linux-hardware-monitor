@@ -1,3 +1,4 @@
+// SQLite 时序数据降采样聚合（1m / 1h 可重入窗口）与分批保留期清理仓储（避免长事务锁库）。
 import type { DatabaseHandle } from "./db.ts";
 
 export interface RetentionPolicy {

@@ -30,10 +30,10 @@ flowchart LR
 
 | 模块 | 允许职责 | 严禁行为 |
 | ---- | -------- | -------- |
-| **Rust Agent** (`agents/linux-agent/`) | 硬件发现、稳定设备 ID、8 类采集器、分级调度、本地诊断、Unix Socket IPC 发送 | 读写 SQLite、Web 业务、单个采集器异常导致进程崩溃、使用 `User=root` |
-| **Bun API** (`apps/api/`) | IPC 接收校验与去重、SQLite 唯一写入、聚合与保留清理、Argon2id 会话/RBAC/审计、REST & WebSocket、安全导出与 Webhook | 读取宿主机 `/sys`/`/proc`/`/dev`、执行外部硬件命令、静默吞异常 |
+| **Rust Agent** (`agents/linux-agent/`) | 硬件发现、稳定设备 ID、9 类采集器（含物理网卡、分区容量、CPU 过热降频、扩展 SMART/NVMe）、12h 超低功耗与 `agent-ctrl.sock` 按需扫描、本地诊断、Unix Socket IPC 发送 | 读写 SQLite、Web 业务、单个采集器异常导致进程崩溃、使用 `User=root` |
+| **Bun API** (`apps/api/`) | IPC 接收校验与去重、通过 `agent-ctrl.sock` 触发手动全局检测、SQLite 唯一写入、聚合与保留清理、Argon2id 会话/RBAC/审计、REST & WebSocket、安全导出与 Webhook | 读取宿主机 `/sys`/`/proc`/`/dev`、执行外部硬件命令、静默吞异常 |
 | **Haskell Engine** (`core/health-engine/`) | 纯函数健康评分、四级阈值解析、趋势/鲁棒 MAD 异常/关联检测、带滞回防抖的告警状态机 | 读取 `/sys` `/proc`、访问数据库、持有跨请求持久化状态 |
-| **React Web** (`apps/web/`) | 实时/历史数据可视化、三语界面与日志本地化、全局告警展示与交互 | 在前端推断硬件健康状态、将 `null` 缺失值补零为 `0`、绕过 API |
+| **React Web** (`apps/web/`) | 16 视图实时/历史数据可视化、6 套深浅背景主题、三语界面与日志/SMART 释义本地化、手动全局体检按钮、全局告警展示与交互 | 在前端推断硬件健康状态、将 `null` 缺失值补零为 `0`、绕过 API |
 | **Tauri 2 Desktop** (`apps/desktop/`) | 轻量桌面外壳连接局域网控制台 | 服务端硬件采集、直连数据库 |
 
 ---
@@ -51,29 +51,31 @@ linux-hardware-monitor/
 ├── agents/linux-agent/                # Rust 原生宿主机采集 Agent（由根 Cargo.toml 统一 workspace）
 │   └── crates/
 │       ├── agent-core/                # SysFs 抽象、CommandRunner 白名单、稳定 ID、分级调度器 scheduler.rs
-│       ├── agent-collectors/          # hwmon / thermal / cpu(RAPL) / memory / storage / smart / nvme / gpu
+│       ├── agent-collectors/          # hwmon / thermal / cpu(RAPL+降频) / memory / storage(含分区容量) / smart / nvme / gpu / network
 │       ├── agent-ipc/                 # Unix Socket 客户端、握手 ACK、有界缓冲与退避重连
-│       └── agent-bin/                 # lhm-agent 可执行入口（--once / --send-once / 常驻模式）
+│       └── agent-bin/                 # lhm-agent 可执行入口（--once / --send-once / 12h 低功耗常驻 + agent-ctrl.sock 按需 SCAN）
 ├── apps/api/                          # Bun + Elysia + Drizzle ORM 后端服务
 │   ├── src/
-│   │   ├── index.ts                   # 服务启动、Unix Socket 监听、60s 分析与每小时清理调度
+│   │   ├── index.ts                   # 服务启动、Unix Socket 监听、事件驱动防抖分析与定时维护调度
 │   │   ├── app.ts                     # Elysia 路由装配与统一响应信封
-│   │   ├── config/env.ts              # 环境变量配置解析
+│   │   ├── config/env.ts              # 环境变量配置解析（含 LHM_AGENT_CTRL_SOCKET 与 13h 过期阈值）
 │   │   ├── auth/                      # Argon2id 密码哈希、一次性引导令牌、SHA-256 会话 Cookie、登录限流
-│   │   ├── ipc/                       # unixServer.ts 分帧监听 + processor.ts 校验去重入库
+│   │   ├── ipc/                       # unixServer.ts 分帧监听 + processor.ts 去重入库 + agentControl.ts 按需扫描客户端
 │   │   ├── repositories/              # db.ts(SQLite WAL) / schema.ts(21 表) / telemetry / aggregation / alert / auth
-│   │   ├── routes/                    # health / auth / telemetry / alerts / extensions(导出与 Webhook)
+│   │   ├── routes/                    # health / auth / telemetry / alerts / extensions(导出、Webhook 与 POST /api/v1/system/check)
 │   │   ├── services/                  # healthClient.ts(Haskell 调用与降级) / notifier.ts(SSRF 防护 Webhook)
 │   │   └── websocket/hub.ts           # Origin 校验、Cookie 鉴权与订阅增量推送
-│   ├── drizzle/                       # Drizzle 版本化 SQL Migration（禁止手工改表）
+│   ├── drizzle/                       # Drizzle 版本化 SQL Migration（0000_init_v1 + 0001_smart_extended_telemetry）
 │   └── tests/                         # 7 套自动化测试（认证、IPC、持久化、WebSocket、告警、阶段 6 扩展）
 ├── apps/web/                          # React 19 + TypeScript + Vite 6 + ECharts 5 控制台
 │   └── src/
 │       ├── App.tsx                    # 根布局、侧边栏计数角标、GlobalAlertBanner 全局红/橙告警横幅
+│       ├── lib/theme.tsx              # 6 套深色/浅色背景主题（slate/obsidian/forest/amethyst/snow/warm）与 ECharts 联动调色板
 │       ├── lib/i18n.tsx               # 中文 / English / 日本語 全站词典与诊断日志/分析本地化翻译器
-│       ├── lib/format.ts              # null 与 0 严格区分格式化、多粒度时间范围映射
+│       ├── lib/smartMeta.ts           # 28 项常见 SMART 属性三语释义与坏道/高温/CRC 异常视觉标色
+│       ├── lib/format.ts              # null 与 0 严格区分格式化（含网卡 Mbps/MB/s 换算）、多粒度时间范围映射
 │       ├── components/                # 统一加载/空/错误/权限提示、状态徽章、ECharts（connectNulls=false）
-│       └── pages/                     # 15 个监控与管理页面（含告警规则预设与 CSV/JSON 导出）
+│       └── pages/                     # 16 个监控与管理页面（含网络接口、分区容量进度条、手动全局检测、规则预设与导出）
 ├── apps/desktop/                      # Tauri 2 桌面客户端薄外壳脚手架（独立于服务端 Cargo.toml）
 ├── core/health-engine/                # Haskell + Cabal 健康分析引擎
 │   ├── app/Main.hs                    # 无状态 HTTP/1.1 JSON 服务（GET /health, POST /v1/analyze，4 MiB 上限）
@@ -110,11 +112,11 @@ linux-hardware-monitor/
 
 ### 4.1 Rust Agent（低开销分级采集与安全执行）
 
-- **分级调度（`scheduler.rs` `run_tick`）**：
-  - 默认每 `5s` 驱动一次轻量传感采集，硬件设备发现结果缓存 `60s`（避免频繁遍历 `/sys` 与重复写库）；
-  - `SmartCollector` 内置双频任务（温度 `30s` / 全量 SMART 属性 `900s`），统一携带 `-n standby --json=c` 参数，绝不唤醒待机 HDD；
-  - 对返回 `PermissionDenied` 的任务自动退避至 `300s`，防止无权限环境下频繁拉起子进程。
-- **外部命令白名单（`command.rs`）**：仅允许绝对路径白名单（`/usr/sbin/smartctl`、`/usr/sbin/nvme`、`/usr/bin/nvidia-smi`），数组传参、强制超时、输出上限 `2 MiB`。
+- **分级调度与 12 小时超低功耗模式（`scheduler.rs` / `main.rs`）**：
+  - 生产推荐 `--interval 43200 --discovery-interval 43200`（12 小时低功耗休眠）+ `agent-ctrl.sock` 零轮询按需 `SCAN` 唤醒（管理员在「系统总览」点击「立即全局健康检测」即可 2 秒完成全量采集与分析）；
+  - `CpuCollector` 在间隔 > 60s 或首次启动时自动执行 500ms 短双点 RAPL 采样，避免 32-bit `energy_uj` 计数器跨小时回绕；
+  - `SmartCollector` 全量任务采用快速只读 `-n standby --json=c -i -H -A -l selftest -l error -g all`，绝不唤醒待机 HDD；对返回 `PermissionDenied` 的任务自动退避至 `300s`。
+- **外部命令白名单（`command.rs`）**：仅允许绝对路径白名单（`/usr/sbin/smartctl`、`/usr/sbin/nvme`、`/usr/bin/nvidia-smi`、`/usr/bin/df`），数组传参、强制超时、输出上限 `2 MiB`。
 - **低优先级与沙箱运行**：通过 `Nice=10`、`IOSchedulingClass=idle`、`MemoryMax=150M`、`CPUQuota=15%` 与非 root `lhm-agent` 专用用户运行，实测 L3 实体机常驻内存约 `1.2 MiB`、CPU 约 `0.0%`。
 
 ### 4.2 Bun + Elysia API（数据持久化、认证与安全扩展）

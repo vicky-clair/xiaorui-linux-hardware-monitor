@@ -1,3 +1,4 @@
+// 硬件设备列表页：展示全部已发现设备的稳定 ID、状态与物理拓扑身份（PCI BDF / WWN / 序列号 / 驱动路径）。
 import { useEffect, useState } from "react";
 import {
   api,

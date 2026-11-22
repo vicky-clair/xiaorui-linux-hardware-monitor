@@ -1,3 +1,4 @@
+// ECharts 时序折线图组件：强制 connectNulls=false 保留缺失断点（绝不补零），并自动联动 6 套浅/深色背景主题配色。
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts";
 import type { Unit } from "@lhm/protocol/types";

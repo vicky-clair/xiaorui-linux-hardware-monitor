@@ -1,3 +1,5 @@
+//! Rust Agent 核心基础设施库：提供 SysFs 抽象、外部命令白名单执行器、稳定设备 ID、分级任务调度器与主机身份管理。
+
 pub mod collector;
 pub mod command;
 pub mod coverage;

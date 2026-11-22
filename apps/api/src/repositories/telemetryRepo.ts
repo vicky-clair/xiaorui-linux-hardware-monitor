@@ -1,3 +1,4 @@
+// 硬件遥测核心仓储：负责 IPC 幂等去重游标、主机/设备/传感器入库、SMART 扩展字段与分区容量读取、覆盖率与时序查询。
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import type {
   CollectorStatus,

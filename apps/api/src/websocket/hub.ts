@@ -1,3 +1,4 @@
+// WebSocket 实时增量推送中心（WS /api/v1/stream）：管理已鉴权客户端订阅与最新读数/告警事件广播。
 export type StreamEventType =
   | "reading"
   | "device_status"

@@ -1,3 +1,4 @@
+-- | 线性回归斜率趋势识别模块（纯函数）：判定指标处于上升、稳定、下降或样本不足状态。
 module Health.Trends
   ( computeTrend
   ) where

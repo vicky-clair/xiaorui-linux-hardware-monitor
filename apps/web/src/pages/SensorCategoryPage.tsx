@@ -1,3 +1,4 @@
+// 通用硬件分类监控页（复用支撑 CPU / GPU / 主板 / 内存 / 风扇与电压 / 网络接口）：结合 REST 基线与 WebSocket 实时增量刷新。
 import { useEffect, useState } from "react";
 import type { SensorReading } from "@lhm/protocol/types";
 import {

@@ -1,3 +1,4 @@
+// 用户账户、会话令牌哈希、登录失败限流记录、系统配置与管理员审计日志（audit_logs）仓储。
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import type { DatabaseHandle } from "./db.ts";
 import {

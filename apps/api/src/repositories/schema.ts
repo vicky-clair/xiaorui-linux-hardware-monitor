@@ -1,3 +1,4 @@
+// Drizzle ORM SQLite 数据库表结构唯一定义（21 张版本化表，所有变更必须通过 apps/api/drizzle/ 迁移）。
 import {
   index,
   integer,

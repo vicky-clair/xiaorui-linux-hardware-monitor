@@ -1,3 +1,5 @@
+//! Unix Domain Socket IPC 客户端（ADR-0003）：实现 4 字节大端长度分帧、`hello`/`hello_ack` 握手、序号确认 ACK 与指数退避重连。
+
 use crate::buffer::{BoundedBuffer, BufferConfig};
 use agent_core::utc_now_rfc3339;
 use lhm_protocol::{

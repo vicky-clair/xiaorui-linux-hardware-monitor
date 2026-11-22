@@ -1,3 +1,5 @@
+//! NVMe 健康日志采集器：通过白名单 `/usr/sbin/nvme smart-log -o json` 解析温度、寿命、备用空间、介质错误、异常断电与 128-bit 精确读写计数。
+
 use crate::storage::{DiscoveredBlockDevice, discover_block_devices};
 use agent_core::collector::{
     BoxFuture, CollectResult, CollectionTask, Collector, CollectorContext, DiscoveryResult,

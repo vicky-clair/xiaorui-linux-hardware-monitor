@@ -1,3 +1,4 @@
+// 认证与权限服务：负责首次启动一次性引导令牌、Argon2id 密码校验、登录限流、SHA-256 会话 Cookie 与 RBAC 鉴权。
 import { randomBytes } from "node:crypto";
 import type { ApiConfig } from "../config/env.ts";
 import type { AuthRepository, PublicUser, UserRole } from "../repositories/authRepo.ts";

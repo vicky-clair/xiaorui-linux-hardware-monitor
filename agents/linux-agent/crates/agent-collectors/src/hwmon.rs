@@ -1,3 +1,5 @@
+//! Linux hwmon 通用传感器采集器：读取 `/sys/class/hwmon/` 下的温度、风扇转速、电压、功耗与电流，按硬件拓扑生成稳定设备 ID（禁止临时 `hwmonN` 编号）。
+
 use agent_core::collector::{
     BoxFuture, CollectResult, CollectionTask, Collector, CollectorContext, DiscoveryResult,
 };
