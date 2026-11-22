@@ -281,6 +281,14 @@ const DICTIONARIES: Record<Locale, Dict> = {
     "history.range7d": "最近 7 天 (1小时聚合)",
     "history.noPoints": "所选时间范围内无采样点",
     "history.noPointsDesc": "请切换时间范围或等待 Agent 持续上报。",
+    "history.hint":
+      "勾选下方温度传感器可同屏对比趋势曲线（空白断点代表无有效采样，绝不补零）；点击导出将下载首个已选传感器在当前时间范围内的记录。",
+    "history.selectAll": "全选",
+    "history.clearAll": "清空",
+    "history.latest": "最新",
+    "history.min": "最低",
+    "history.max": "最高",
+    "history.samples": "采样点",
     // Devices
     "devices.loading": "正在加载硬件设备列表...",
     "devices.empty": "暂无已发现设备",
@@ -602,6 +610,14 @@ const DICTIONARIES: Record<Locale, Dict> = {
     "history.range7d": "Last 7 days (1h avg)",
     "history.noPoints": "No Samples in Selected Range",
     "history.noPointsDesc": "Try another time range or wait for Agent telemetry.",
+    "history.hint":
+      "Toggle temperature sensors below to compare trends (gaps indicate missing data, never zero-filled). Export downloads the first selected sensor for the active time range.",
+    "history.selectAll": "Select All",
+    "history.clearAll": "Clear",
+    "history.latest": "Latest",
+    "history.min": "Min",
+    "history.max": "Max",
+    "history.samples": "Samples",
     "devices.loading": "Loading hardware devices...",
     "devices.empty": "No Devices Discovered",
     "devices.title": "Hardware Devices",
@@ -918,6 +934,14 @@ const DICTIONARIES: Record<Locale, Dict> = {
     "history.range7d": "直近 7 日間 (1時間集計)",
     "history.noPoints": "選択期間内にデータがありません",
     "history.noPointsDesc": "期間を変更するか Agent のデータ送信をお待ちください。",
+    "history.hint":
+      "下の温度センサーを選択するとトレンドを比較できます（欠損箇所は 0 補完せず途切れとして表示）。エクスポートは先頭の選択センサーを対象とします。",
+    "history.selectAll": "すべて選択",
+    "history.clearAll": "クリア",
+    "history.latest": "最新",
+    "history.min": "最小",
+    "history.max": "最大",
+    "history.samples": "件数",
     "devices.loading": "ハードウェア一覧を読み込み中...",
     "devices.empty": "検出されたデバイスはありません",
     "devices.title": "ハードウェアデバイス一覧",
@@ -1057,6 +1081,57 @@ export function translateCollectorStatus(locale: Locale, status: string): string
     ja: { running: "稼働中", degraded: "縮退運転", error: "エラー", stopped: "停止", unknown: "不明" },
   };
   return map[locale][status.toLowerCase()] ?? status;
+}
+
+/** 将内核/驱动上报的常见英文温度及硬件传感器名翻译为当前语言（保留原始通道编号以便溯源） */
+export function translateSensorName(locale: Locale, name: string): string {
+  if (locale === "en") return name;
+
+  const pkgMatch = /^Package id\s*(\d+)$/i.exec(name);
+  if (pkgMatch) {
+    return locale === "zh"
+      ? `CPU 封装温度 ${pkgMatch[1]}`
+      : `CPU パッケージ温度 ${pkgMatch[1]}`;
+  }
+
+  const coreMatch = /^Core\s*(\d+)$/i.exec(name);
+  if (coreMatch) {
+    return locale === "zh" ? `CPU 核心 ${coreMatch[1]}` : `CPU コア ${coreMatch[1]}`;
+  }
+
+  const tzMatch = /^thermal_zone(\d+)\s*\(([^)]+)\)$/i.exec(name);
+  if (tzMatch) {
+    const [, idx, tzType] = tzMatch;
+    const typeLabel =
+      tzType === "acpitz"
+        ? locale === "zh"
+          ? "主板 ACPI 热区"
+          : "マザーボード ACPI 熱領域"
+        : tzType === "x86_pkg_temp"
+          ? locale === "zh"
+            ? "CPU 封装热区"
+            : "CPU パッケージ熱領域"
+          : tzType;
+    return `${typeLabel} #${idx} (${tzType})`;
+  }
+
+  if (/^SMART Temperature$/i.test(name)) {
+    return locale === "zh" ? "硬盘 SMART 温度" : "ドライブ SMART 温度";
+  }
+  if (/^NVMe Temperature$/i.test(name) || /^Composite$/i.test(name)) {
+    return locale === "zh" ? "NVMe 综合温度" : "NVMe 総合温度";
+  }
+  if (/^GPU Temperature$/i.test(name)) {
+    return locale === "zh" ? "GPU 温度" : "GPU 温度";
+  }
+  if (/^GPU Hotspot/i.test(name)) {
+    return locale === "zh" ? "GPU 热点温度" : "GPU ホットスポット温度";
+  }
+  if (/^temp(\d+)$/i.test(name)) {
+    const idx = name.slice(4);
+    return locale === "zh" ? `温度通道 ${idx}` : `温度チャネル ${idx}`;
+  }
+  return name;
 }
 
 export function translateLogLevel(locale: Locale, level: string): string {

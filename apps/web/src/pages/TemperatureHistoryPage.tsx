@@ -1,14 +1,15 @@
-// 温度历史曲线与安全导出页：支持 15m/1h/6h/24h/7d 多粒度聚合查询、ECharts 断点曲线渲染及 CSV/JSON 导出。
+// 温度历史曲线与安全导出页：支持 15m/1h/6h/24h/7d 多粒度聚合查询、三语传感器名称本地化、统计摘要与 ECharts 断点曲线渲染。
 import { useEffect, useState } from "react";
 import {
   api,
   ApiClientError,
   type AggReadingRow,
+  type DeviceRow,
   type RawReadingRow,
   type SensorRow,
 } from "../lib/api.ts";
-import { resolveTimeRange, type TimeRangeKey } from "../lib/format.ts";
-import { useI18n } from "../lib/i18n.tsx";
+import { formatReadingValue, resolveTimeRange, type TimeRangeKey } from "../lib/format.ts";
+import { translateSensorName, useI18n } from "../lib/i18n.tsx";
 import {
   TimeSeriesChart,
   type ChartSeriesInput,
@@ -24,20 +25,38 @@ const RANGE_KEYS: Array<{ key: TimeRangeKey; labelKey: string }> = [
 ];
 
 export function TemperatureHistoryPage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [sensors, setSensors] = useState<SensorRow[]>([]);
+  const [deviceNames, setDeviceNames] = useState<Record<string, string>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [range, setRange] = useState<TimeRangeKey>("1h");
+  // 12 小时超低功耗模式下默认展示最近 24 小时，打开页面即可直接看到历史曲线
+  const [range, setRange] = useState<TimeRangeKey>("24h");
   const [series, setSeries] = useState<ChartSeriesInput[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
 
+  const formatSensorLabel = (s: SensorRow, devMap: Record<string, string>) => {
+    const localizedName = translateSensorName(locale, s.sensorName);
+    const devName = devMap[s.deviceId];
+    // 当同类型传感器存在多个设备（如多块硬盘的 SMART 温度）时附带清晰设备名区分
+    if (s.source === "smartctl" || s.source === "nvme-cli") {
+      return devName ? `${localizedName} · ${devName}` : localizedName;
+    }
+    return localizedName;
+  };
+
   useEffect(() => {
     setLoading(true);
-    api
-      .sensors({ sensorType: "temperature" })
-      .then((res) => {
-        const supported = res.sensors.filter((s) => s.capabilityStatus === "supported");
+    Promise.all([api.sensors({ sensorType: "temperature" }), api.devices().catch(() => null)])
+      .then(([sRes, dRes]) => {
+        const supported = sRes.sensors.filter((s) => s.capabilityStatus === "supported");
+        const devMap: Record<string, string> = {};
+        if (dRes) {
+          for (const d of dRes.devices as DeviceRow[]) {
+            devMap[d.deviceId] = d.name;
+          }
+        }
+        setDeviceNames(devMap);
         setSensors(supported);
         setSelectedIds(supported.slice(0, 4).map((s) => s.sensorId));
       })
@@ -78,7 +97,7 @@ export function TemperatureHistoryPage() {
             ];
           });
         return {
-          name: sensor ? `${sensor.sensorName} (${sensor.deviceId})` : sid,
+          name: sensor ? formatSensorLabel(sensor, deviceNames) : sid,
           unit: "celsius" as const,
           points,
         };
@@ -92,7 +111,7 @@ export function TemperatureHistoryPage() {
             : { message: String(err) },
         ),
       );
-  }, [selectedIds, range, sensors]);
+  }, [selectedIds, range, sensors, deviceNames, locale]);
 
   if (loading) return <LoadingState message={t("history.loading")} />;
   if (error) return <ErrorState code={error.code} message={error.message} />;
@@ -114,9 +133,25 @@ export function TemperatureHistoryPage() {
   const { from, to, granularity } = resolveTimeRange(range);
   const primarySensorId = selectedIds[0] ?? null;
 
+  const statsList = series
+    .map((s) => {
+      const validVals = s.points
+        .map((p) => p[1])
+        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+      if (validVals.length === 0) return null;
+      return {
+        name: s.name,
+        latest: validVals[validVals.length - 1]!,
+        min: Math.min(...validVals),
+        max: Math.max(...validVals),
+        count: validVals.length,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
   return (
     <div className="panel">
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
         <h2 style={{ margin: 0 }}>{t("history.title")}</h2>
         <div className="row">
           {primarySensorId && (
@@ -163,7 +198,27 @@ export function TemperatureHistoryPage() {
         </div>
       </div>
 
+      <div className="banner banner-info" style={{ marginBottom: 12, fontSize: 12 }}>
+        {t("history.hint")}
+      </div>
+
       <div className="row" style={{ marginBottom: 12 }}>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ padding: "3px 10px", fontSize: 12 }}
+          onClick={() => setSelectedIds(sensors.map((s) => s.sensorId))}
+        >
+          {t("history.selectAll")}
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ padding: "3px 10px", fontSize: 12 }}
+          onClick={() => setSelectedIds([])}
+        >
+          {t("history.clearAll")}
+        </button>
         {sensors.map((s) => (
           <label
             key={s.sensorId}
@@ -175,10 +230,28 @@ export function TemperatureHistoryPage() {
               checked={selectedIds.includes(s.sensorId)}
               onChange={() => toggleSensor(s.sensorId)}
             />
-            <span>{s.sensorName}</span>
+            <span>{formatSensorLabel(s, deviceNames)}</span>
           </label>
         ))}
       </div>
+
+      {statsList.length > 0 && (
+        <div className="kv-grid">
+          {statsList.map((st) => (
+            <div className="kv-item" key={st.name}>
+              <div className="kv-label">{st.name}</div>
+              <div className="kv-val">
+                {t("history.latest")}{" "}
+                {formatReadingValue(st.latest, "celsius", "valid", locale)}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                {t("history.min")} {st.min.toFixed(1)} °C · {t("history.max")}{" "}
+                {st.max.toFixed(1)} °C · {t("history.samples")} {st.count}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {series.every((s) => s.points.length === 0) ? (
         <EmptyState title={t("history.noPoints")} description={t("history.noPointsDesc")} />

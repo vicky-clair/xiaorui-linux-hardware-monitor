@@ -14,7 +14,12 @@ import {
 } from "./components/StatusBadge.tsx";
 import { buildTimeSeriesOption } from "./components/TimeSeriesChart.tsx";
 import { formatReadingValue, resolveTimeRange } from "./lib/format.ts";
-import { I18nProvider, translateAnalysisText, translateDiagnostic } from "./lib/i18n.tsx";
+import {
+  I18nProvider,
+  translateAnalysisText,
+  translateDiagnostic,
+  translateSensorName,
+} from "./lib/i18n.tsx";
 import {
   getThemeOption,
   isValidThemeId,
@@ -462,9 +467,17 @@ describe("Core page rendering", () => {
     expect(enThemeHtml).toContain("Warm Paper");
     expect(enThemeHtml).toContain("Clean Light");
 
-    const lightOpt = buildTimeSeriesOption([], "°C", getThemeOption("snow").chart);
+    const lightOpt = buildTimeSeriesOption([], "°C", getThemeOption("snow").chart, "zh");
     const tooltip = lightOpt.tooltip as { backgroundColor?: string; textStyle?: { color?: string } };
     expect(tooltip.backgroundColor).toBe("#ffffff");
     expect(tooltip.textStyle?.color).toBe("#0f172a");
+
+    // Verify localized temperature sensor names (zh / en / ja)
+    expect(translateSensorName("zh", "Package id 0")).toBe("CPU 封装温度 0");
+    expect(translateSensorName("zh", "Core 2")).toBe("CPU 核心 2");
+    expect(translateSensorName("zh", "SMART Temperature")).toBe("硬盘 SMART 温度");
+    expect(translateSensorName("zh", "thermal_zone1 (x86_pkg_temp)")).toContain("CPU 封装热区");
+    expect(translateSensorName("en", "Package id 0")).toBe("Package id 0");
+    expect(translateSensorName("ja", "SMART Temperature")).toBe("ドライブ SMART 温度");
   });
 });
