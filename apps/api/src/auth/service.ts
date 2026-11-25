@@ -88,13 +88,27 @@ export class AuthService {
         "Initial administrator has already been created",
       );
     }
+    const recentBootstrapFailures = this.repo.countRecentFailedAttempts(
+      "__bootstrap__",
+      params.ipAddress,
+      RATE_LIMIT_WINDOW_MINUTES,
+    );
+    if (recentBootstrapFailures >= MAX_FAILED_ATTEMPTS) {
+      throw new AuthError(
+        429,
+        "TOO_MANY_ATTEMPTS",
+        "Too many failed bootstrap attempts; please try again later",
+      );
+    }
     if (params.token !== this.bootstrapToken) {
+      this.repo.recordLoginAttempt("__bootstrap__", params.ipAddress, false);
       throw new AuthError(
         403,
         "INVALID_BOOTSTRAP_TOKEN",
         "Invalid one-time bootstrap token",
       );
     }
+    this.repo.recordLoginAttempt("__bootstrap__", params.ipAddress, true);
     this.validateUsernameAndPassword(params.username, params.password);
     const hash = await this.hashPassword(params.password);
     const user = this.repo.createUser({

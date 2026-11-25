@@ -147,15 +147,22 @@ export function App() {
 
   const stream = useRealtimeStream(user !== null);
 
-  // 定期拉取告警与最新 Haskell 分析摘要（每 30s），用于全局红色横幅与侧边栏计数角标
+  // 定期拉取告警与最新 Haskell 分析摘要（每 5 分钟），用于全局红色横幅与侧边栏计数角标
   const refreshGlobalStatus = useCallback(() => {
     if (!user) return;
-    Promise.all([api.alerts().catch(() => null), api.analysis().catch(() => null)]).then(
-      ([aRes, anRes]) => {
-        if (aRes) setAlerts(aRes.alerts);
-        if (anRes) setAnalysis(anRes.results);
-      },
-    );
+    Promise.all([
+      api.alerts().catch((err) => {
+        console.warn("[lhm-web] refresh alerts failed:", err);
+        return null;
+      }),
+      api.analysis().catch((err) => {
+        console.warn("[lhm-web] refresh analysis failed:", err);
+        return null;
+      }),
+    ]).then(([aRes, anRes]) => {
+      if (aRes) setAlerts(aRes.alerts);
+      if (anRes) setAnalysis(anRes.results);
+    });
   }, [user]);
 
   useEffect(() => {

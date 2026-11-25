@@ -199,6 +199,14 @@ export class AuthRepository {
       .run();
   }
 
+  /** 吊销指定用户的全部活跃会话（改密或禁用账号时调用，防止旧 Cookie 继续生效） */
+  deleteSessionsByUserId(userId: string): void {
+    this.db
+      .delete(appSessions)
+      .where(eq(appSessions.userId, userId))
+      .run();
+  }
+
   recordLoginAttempt(username: string, ipAddress: string, succeeded: boolean): void {
     this.db
       .insert(loginAttempts)
@@ -279,7 +287,9 @@ export class AuthRepository {
     const now = new Date().toISOString();
     const tx = this.handle.sqlite.transaction(() => {
       for (const [key, value] of Object.entries(updates)) {
-        const isSensitive = sensitiveKeys.has(key) ? 1 : 0;
+        // 强制保护包含 secret/token/password 的配置键始终以 is_sensitive=1 存储，防止通过通用配置接口误降级泄露
+        const isSensitive =
+          sensitiveKeys.has(key) || /secret|token|password/i.test(key) ? 1 : 0;
         this.db
           .insert(appSettings)
           .values({

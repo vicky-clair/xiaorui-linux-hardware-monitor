@@ -55,7 +55,7 @@
       "rule_id": "cpu-temp-warn",
       "metric": "temperature",
       "device_type": "cpu",
-      "device_id": null,
+      "device_id": "hwmon-coretemp-coretemp-0",
       "operator": "gte",
       "threshold": 80.0,
       "unit": "celsius",
@@ -74,5 +74,16 @@
       "source": "hwmon-coretemp-crit"
     }
   ],
-  "prev_alert_states": []
+  "prev_alert_states": [
+    {
+      "state_key": "debian-host-01:hwmon-coretemp-coretemp-0:cpu-temp-warn",
+      "host_id": "debian-host-01",
+      "device_id": "hwmon-coretemp-coretemp-0",
+      "rule_id": "cpu-temp-warn",
+      "state": "pending",
+      "pending_since": "2026-11-20T10:03:00Z",
+      "firing_since": null,
+      "last_evaluated_at": "2026-11-20T10:03:00Z"
+    }
+  ]
 }

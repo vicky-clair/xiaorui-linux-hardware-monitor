@@ -177,6 +177,10 @@ export function createAuthRoutes(authService: AuthService, authRepo: AuthReposit
         set.status = 404;
         return errorResponse("USER_NOT_FOUND", `User '${params.id}' not found`);
       }
+      // 修改密码或禁用账户时立即吊销该用户所有活跃会话，防止旧会话继续使用
+      if (patch.passwordHash !== undefined || patch.disabled === true) {
+        authRepo.deleteSessionsByUserId(params.id);
+      }
       authRepo.writeAuditLog({
         actorUserId: session.user_id,
         actorUsername: session.username,

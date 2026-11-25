@@ -55,9 +55,15 @@ analyze req =
                     , readingMetric r == ruleSpecMetric rule
                     , readingQuality r == QualityValid
                     ]
+                  -- 对下限类规则（lt / lte，如风扇低速/停转、备用空间过低）取最小值，
+                  -- 对上限类规则（gt / gte，如高温、高占用）取最大值，防止多传感器场景下掩盖异常通道。
                   observed = case [v | r <- matching, Just v <- [readingValue r]] of
                     [] -> Nothing
-                    vs -> Just (maximum vs)
+                    vs -> Just $ case ruleSpecOperator rule of
+                      OpLt -> minimum vs
+                      OpLte -> minimum vs
+                      OpGt -> maximum vs
+                      OpGte -> maximum vs
                   resolved =
                     resolveThreshold
                       (refDeviceType dev)

@@ -30,6 +30,8 @@ deploy/docker/certs/
 *.log
 logs/
 tmp/
+# Local caches & tool state
+.memsearch/
 .DS_Store
 Thumbs.db
 

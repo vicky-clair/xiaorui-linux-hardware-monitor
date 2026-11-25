@@ -113,11 +113,12 @@ impl NvmeCollector {
             critical_warning,
             firmware_version: None,
             serial_number: disk.serial.clone(),
-            rotation_rate_rpm: Some(0),
+            // nvme smart-log JSON 不直接返回转速与 TRIM 能力位，不作理论硬编码假设（留空由设备真实特征或 smartctl 补充）
+            rotation_rate_rpm: None,
             sata_link_speed: None,
             apm_level: None,
             write_cache_enabled: None,
-            trim_supported: Some(true),
+            trim_supported: None,
             self_test_passed: None,
             self_test_last_status: None,
             self_test_last_hours: None,
@@ -249,14 +250,25 @@ impl Collector for NvmeCollector {
             };
 
             let args = ["smart-log", disk.dev_path.as_str(), "-o", "json"];
+            let temp_sid = sensor_id(&disk.device_id, "temperature", "nvme");
             match ctx.cmd.run(NVME_BIN, &args, task.timeout).await {
                 Ok(out) if out.exit_code == 0 => {
                     match Self::parse_nvme_smart_log(&ctx.host_id, &disk, &out.stdout) {
                         Ok((report, readings)) => {
                             res.smart_reports.push(report);
                             res.readings.extend(readings);
+                            res.sensor_capability_updates
+                                .push((temp_sid, CapabilityStatus::Supported));
+                            if let Some(st) = self.state.write().expect("lock").status.as_mut() {
+                                let now = utc_now_rfc3339();
+                                st.last_run_at = Some(now.clone());
+                                st.last_success_at = Some(now);
+                                st.capability_status = CapabilityStatus::Supported;
+                            }
                         }
                         Err(e) => {
+                            res.sensor_capability_updates
+                                .push((temp_sid, CapabilityStatus::Unavailable));
                             res.diagnostics.push(Diagnostic {
                                 diagnostic_id: format!("diag-{}", Uuid::new_v4()),
                                 host_id: ctx.host_id.clone(),
@@ -275,11 +287,14 @@ impl Collector for NvmeCollector {
                 }
                 Ok(out) => {
                     let lower = format!("{} {}", out.stdout, out.stderr).to_ascii_lowercase();
-                    let code = if lower.contains("permission denied") {
-                        "NVME_PERMISSION_DENIED"
+                    let (code, cap) = if lower.contains("permission denied")
+                        || lower.contains("operation not permitted")
+                    {
+                        ("NVME_PERMISSION_DENIED", CapabilityStatus::PermissionDenied)
                     } else {
-                        "NVME_EXEC_ERROR"
+                        ("NVME_EXEC_ERROR", CapabilityStatus::Unavailable)
                     };
+                    res.sensor_capability_updates.push((temp_sid, cap));
                     res.diagnostics.push(Diagnostic {
                         diagnostic_id: format!("diag-{}", Uuid::new_v4()),
                         host_id: ctx.host_id.clone(),
@@ -298,6 +313,16 @@ impl Collector for NvmeCollector {
                     });
                 }
                 Err(e) => {
+                    let cap = match e {
+                        agent_core::command::CommandError::NotFound(_) => {
+                            CapabilityStatus::Unsupported
+                        }
+                        agent_core::command::CommandError::PermissionDenied(_) => {
+                            CapabilityStatus::PermissionDenied
+                        }
+                        _ => CapabilityStatus::Unavailable,
+                    };
+                    res.sensor_capability_updates.push((temp_sid, cap));
                     res.diagnostics.push(Diagnostic {
                         diagnostic_id: format!("diag-{}", Uuid::new_v4()),
                         host_id: ctx.host_id.clone(),

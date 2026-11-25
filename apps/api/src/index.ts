@@ -50,6 +50,21 @@ const runAggregationAndAnalysis = (allowPrune: boolean) => {
   const from1m = new Date(now - 5 * 60_000).toISOString();
   const toNow = new Date(now + 1000).toISOString();
   try {
+    // M-3：检测心跳超时的主机并仅将其 online 设备降级为 offline（不触碰 standby 硬盘，兼容 12 小时模式）
+    const timedOutHosts = runtime.telemetryRepo.detectStaleHostsAndMarkOffline(
+      runtime.config.staleAfterSeconds,
+      now,
+    );
+    for (const h of timedOutHosts) {
+      for (const deviceId of h.deviceIds) {
+        runtime.hub.broadcast(
+          "device_status",
+          { device_id: deviceId, device_status: "offline", reason: "AGENT_HEARTBEAT_TIMEOUT" },
+          { deviceId },
+        );
+      }
+    }
+
     runtime.aggregationRepo.aggregate1m(from1m, toNow);
     const from1h = new Date(now - 2 * 3_600_000).toISOString();
     runtime.aggregationRepo.aggregate1h(from1h, toNow);

@@ -61,9 +61,14 @@ impl Collector for ThermalCollector {
             let mut result = DiscoveryResult::default();
             let entries = match ctx.sysfs.read_dir_names("/sys/class/thermal") {
                 Ok(names) => names,
-                Err(_) => {
+                Err(err) => {
+                    let cap = match err {
+                        SysFsError::PermissionDenied(_) => CapabilityStatus::PermissionDenied,
+                        SysFsError::NotFound(_) => CapabilityStatus::Unsupported,
+                        _ => CapabilityStatus::Unavailable,
+                    };
                     let mut st = self.state.write().expect("lock");
-                    st.cap = Some(CapabilityStatus::Unsupported);
+                    st.cap = Some(cap);
                     return result;
                 }
             };

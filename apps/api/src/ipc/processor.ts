@@ -92,10 +92,7 @@ export class IpcProcessor {
 
     switch (msg.message_type) {
       case "heartbeat": {
-        this.repo.touchHostHeartbeat(msg.host_id, msg.payload.uptime_seconds);
-        if (cursor) {
-          this.repo.advanceCursor(cursor.agentInstanceId, msg.host_id, cursor.sequence);
-        }
+        this.repo.recordHeartbeat(msg.host_id, msg.payload.uptime_seconds, cursor);
         return this.buildReply(msg, "ack", { acked_sequence: msg.sequence });
       }
       case "inventory": {

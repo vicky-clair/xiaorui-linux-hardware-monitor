@@ -51,6 +51,7 @@ resolveThreshold devType devId metric mRule hwLimits =
           hwLimits
       hwRef = mHw >>= (\h -> maybe (hwLimitMaxValue h) Just (hwLimitCritValue h))
    in case mRule of
+        -- 1. 用户单设备自定义规则：实际参与比较的是规则阈值
         Just rule
           | ruleSpecDeviceId rule == Just devId ->
               let note = case hwRef of
@@ -59,16 +60,22 @@ resolveThreshold devType devId metric mRule hwLimits =
                           "user override exceeds hardware limit"
                     _ -> "user device override"
                in ResolvedThreshold (Just (ruleSpecThreshold rule)) ThUserDeviceOverride note
-        _ -> case (mHw, hwRef) of
+        -- 2. 全局显式规则（按 device_type 生效）：保持来源与实际比较阈值一致，避免错标为 hardware_limit
+        Just rule ->
+          let note = case hwRef of
+                Just crit
+                  | ruleSpecThreshold rule > crit ->
+                      "rule:" <> ruleSpecId rule <> " (exceeds hardware limit)"
+                _ -> "rule:" <> ruleSpecId rule
+           in ResolvedThreshold (Just (ruleSpecThreshold rule)) ThGenericDefault note
+        -- 3. 无用户规则时优先回退硬件驱动暴露的 max/crit 限值，再回退保守通用默认阈值，最后标为不可用
+        Nothing -> case (mHw, hwRef) of
           (Just hw, Just lim) ->
             ResolvedThreshold (Just lim) ThHardwareLimit (hwLimitSource hw)
-          _ -> case mRule of
-            Just rule ->
-              ResolvedThreshold (Just (ruleSpecThreshold rule)) ThGenericDefault ("rule:" <> ruleSpecId rule)
-            Nothing
-              | metric == "temperature" ->
-                  case genericDefaultTempLimit devType of
-                    Just (v, src) -> ResolvedThreshold (Just v) ThGenericDefault src
-                    Nothing -> ResolvedThreshold Nothing ThUnavailable "no reliable threshold available"
-              | otherwise ->
-                  ResolvedThreshold Nothing ThUnavailable "no reliable threshold available"
+          _
+            | metric == "temperature" ->
+                case genericDefaultTempLimit devType of
+                  Just (v, src) -> ResolvedThreshold (Just v) ThGenericDefault src
+                  Nothing -> ResolvedThreshold Nothing ThUnavailable "no reliable threshold available"
+            | otherwise ->
+                ResolvedThreshold Nothing ThUnavailable "no reliable threshold available"

@@ -94,8 +94,15 @@ export function createExtensionRoutes(deps: {
       try {
         aggregationRepo.aggregate1m(new Date(afterMs - 5 * 60_000).toISOString(), toNow);
         aggregationRepo.aggregate1h(new Date(afterMs - 2 * 3_600_000).toISOString(), toNow);
-      } catch {
-        // aggregation errors are non-fatal for analysis
+      } catch (err) {
+        console.warn(
+          JSON.stringify({
+            timestamp: new Date().toISOString(),
+            component: "lhm-api-manual-check",
+            level: "WARN",
+            message: `Non-fatal aggregation error during manual check: ${err instanceof Error ? err.message : String(err)}`,
+          }),
+        );
       }
 
       // 3. 调用 Haskell 健康引擎完成全局评估与告警状态推进

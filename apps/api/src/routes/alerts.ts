@@ -73,6 +73,10 @@ export function createAlertRoutes(deps: {
         set.status = 401;
         return errorResponse("UNAUTHORIZED", "Authentication required");
       }
+      if (session.role !== "admin") {
+        set.status = 403;
+        return errorResponse("FORBIDDEN", "Administrator role required");
+      }
       const acked = alertRepo.acknowledgeAlert(params.id, session.username);
       if (!acked) {
         set.status = 404;

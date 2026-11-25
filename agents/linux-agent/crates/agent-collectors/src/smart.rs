@@ -369,6 +369,7 @@ impl SmartCollector {
             });
 
         let mut attributes = Vec::new();
+        let mut parse_diags = Vec::new();
         if let Some(table) = json
             .get("ata_smart_attributes")
             .and_then(|a| a.get("table"))
@@ -381,8 +382,28 @@ impl SmartCollector {
                 let Some(name) = item.get("name").and_then(|v| v.as_str()) else {
                     continue;
                 };
-                let raw_val = Self::json_uint_string(item.get("raw").and_then(|r| r.get("value")))
-                    .unwrap_or_else(|| UintString::from(0u128));
+                // 严禁在 raw.value 缺失或解析失败时静默伪造为 "0"（0 是合法真实值）
+                let Some(raw_val) =
+                    Self::json_uint_string(item.get("raw").and_then(|r| r.get("value")))
+                else {
+                    parse_diags.push(Diagnostic {
+                        diagnostic_id: format!("diag-{}", Uuid::new_v4()),
+                        host_id: host_id.to_owned(),
+                        device_id: Some(disk.device_id.clone()),
+                        collector_name: Some("smart".into()),
+                        level: DiagnosticLevel::Warn,
+                        error_code: "SMART_ATTR_RAW_UNPARSEABLE".into(),
+                        source: "smartctl".into(),
+                        message: format!(
+                            "Skipped SMART attribute {id} ({name}) on {} because raw.value was missing or non-numeric",
+                            disk.dev_path
+                        ),
+                        remediation: None,
+                        occurred_at: now.clone(),
+                        details: None,
+                    });
+                    continue;
+                };
                 let raw_string = item
                     .get("raw")
                     .and_then(|r| r.get("string"))
@@ -459,7 +480,7 @@ impl SmartCollector {
         (
             Some(report),
             readings,
-            Vec::new(),
+            parse_diags,
             CapabilityStatus::Supported,
         )
     }

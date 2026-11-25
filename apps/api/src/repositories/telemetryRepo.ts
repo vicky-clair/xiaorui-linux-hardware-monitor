@@ -110,6 +110,88 @@ export class TelemetryRepository {
       .run();
   }
 
+  /** 原子事务记录 Agent 心跳并推进去重游标，防止异常中断导致 lastSeenAt 与游标分裂（M-4 修复） */
+  recordHeartbeat(
+    hostId: string,
+    uptimeSeconds?: number,
+    cursor?: { agentInstanceId: string; sequence: number },
+  ): void {
+    const tx = this.handle.sqlite.transaction(() => {
+      this.touchHostHeartbeat(hostId, uptimeSeconds);
+      if (cursor) {
+        this.advanceCursor(cursor.agentInstanceId, hostId, cursor.sequence);
+      }
+    });
+    tx();
+  }
+
+  /**
+   * 检测长时间未上报心跳的主机并将其在线设备降级为 offline（M-3 修复，兼容 12 小时超低功耗模式）。
+   * 仅降级 device_status = 'online' 的设备，绝不改动 'standby' 待机硬盘；
+   * 仅在发生状态跃迁时写入一条去重的 AGENT_HEARTBEAT_TIMEOUT 诊断事件。
+   */
+  detectStaleHostsAndMarkOffline(
+    staleAfterSeconds: number,
+    nowMs: number = Date.now(),
+  ): Array<{ hostId: string; deviceIds: string[] }> {
+    const cutoffIso = new Date(nowMs - staleAfterSeconds * 1000).toISOString();
+    const nowIso = new Date(nowMs).toISOString();
+    const staleHosts = this.db
+      .select({ hostId: hosts.hostId, hostname: hosts.hostname, lastSeenAt: hosts.lastSeenAt })
+      .from(hosts)
+      .where(lte(hosts.lastSeenAt, cutoffIso))
+      .all();
+
+    if (staleHosts.length === 0) return [];
+
+    const transitioned: Array<{ hostId: string; deviceIds: string[] }> = [];
+    const tx = this.handle.sqlite.transaction(() => {
+      for (const h of staleHosts) {
+        const onlineDevs = this.db
+          .select({ deviceId: devices.deviceId })
+          .from(devices)
+          .where(and(eq(devices.hostId, h.hostId), eq(devices.deviceStatus, "online")))
+          .all();
+        if (onlineDevs.length === 0) continue;
+
+        this.db
+          .update(devices)
+          .set({ deviceStatus: "offline" })
+          .where(and(eq(devices.hostId, h.hostId), eq(devices.deviceStatus, "online")))
+          .run();
+
+        this.db
+          .insert(healthEvents)
+          .values({
+            diagnosticId: `diag-hb-timeout-${crypto.randomUUID().slice(0, 8)}`,
+            hostId: h.hostId,
+            deviceId: null,
+            collectorName: "ipc",
+            level: "warn",
+            errorCode: "AGENT_HEARTBEAT_TIMEOUT",
+            source: "api-heartbeat-monitor",
+            message: `Agent on host '${h.hostname}' has not reported since ${h.lastSeenAt} (threshold ${staleAfterSeconds}s); marked ${onlineDevs.length} online device(s) offline`,
+            remediation:
+              "Check lhm-agent.service status and /run/linux-hardware-monitor/ipc.sock connectivity",
+            detailsJson: JSON.stringify({
+              last_seen_at: h.lastSeenAt,
+              stale_after_seconds: staleAfterSeconds,
+              affected_devices: onlineDevs.length,
+            }),
+            occurredAt: nowIso,
+          })
+          .run();
+
+        transitioned.push({
+          hostId: h.hostId,
+          deviceIds: onlineDevs.map((d) => d.deviceId),
+        });
+      }
+    });
+    tx();
+    return transitioned;
+  }
+
   touchHostHeartbeat(hostId: string, uptimeSeconds?: number): void {
     const now = new Date().toISOString();
     this.db

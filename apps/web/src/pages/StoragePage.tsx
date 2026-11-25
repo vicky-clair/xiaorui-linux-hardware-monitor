@@ -50,10 +50,17 @@ export function StorageView({
           <h2>{t("storage.mountsTitle")}</h2>
           <div className="card-grid">
             {allMounts.map((m) => {
-              const pct = m.usagePercent ?? 0;
+              const hasPct = m.usagePercent !== null && Number.isFinite(m.usagePercent);
+              const pct = hasPct ? m.usagePercent! : 0;
               const barClass =
                 pct >= 90 ? "progress-err" : pct >= 85 ? "progress-warn" : "progress-ok";
-              const pctClass = pct >= 90 ? "text-danger" : pct >= 85 ? "text-warn" : "";
+              const pctClass = hasPct
+                ? pct >= 90
+                  ? "text-danger"
+                  : pct >= 85
+                    ? "text-warn"
+                    : ""
+                : "";
               return (
                 <div className="card" key={`${m.deviceId}-${m.mountpoint}`}>
                   <div className="row" style={{ justifyContent: "space-between" }}>
@@ -66,14 +73,16 @@ export function StorageView({
                     className={`card-value ${pctClass}`}
                     style={{ fontSize: 20, marginTop: 4 }}
                   >
-                    {m.usagePercent !== null ? `${m.usagePercent.toFixed(1)}%` : t("fmt.noData")}
+                    {hasPct ? `${pct.toFixed(1)}%` : t("fmt.noData")}
                   </div>
-                  <div className="progress-track">
-                    <div
-                      className={`progress-bar ${barClass}`}
-                      style={{ width: `${Math.min(Math.max(pct, 0), 100)}%` }}
-                    />
-                  </div>
+                  {hasPct && (
+                    <div className="progress-track">
+                      <div
+                        className={`progress-bar ${barClass}`}
+                        style={{ width: `${Math.min(Math.max(pct, 0), 100)}%` }}
+                      />
+                    </div>
+                  )}
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     {t("storage.mountUsed")}:{" "}
                     {m.usedBytes !== null ? formatBytes(m.usedBytes, locale) : "—"} /{" "}

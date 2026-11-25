@@ -40,8 +40,13 @@ describe("Phase 6 extensions: safe CSV/JSON export & signed webhook notification
     expect(escapeCsvCell("@SUM(A1:A2)")).toBe("'@SUM(A1:A2)");
   });
 
-  test("validateWebhookUrl blocks SSRF metadata/non-http/credential URLs", () => {
+  test("validateWebhookUrl blocks SSRF metadata/loopback/IPv4-mapped/non-http/credential URLs while allowing LAN", () => {
     expect(validateWebhookUrl("http://169.254.169.254/latest/meta-data").ok).toBe(false);
+    expect(validateWebhookUrl("http://[::ffff:169.254.169.254]/latest/meta-data").ok).toBe(false);
+    expect(validateWebhookUrl("http://[::ffff:127.0.0.1]:8080/hook").ok).toBe(false);
+    expect(validateWebhookUrl("http://127.0.0.1:8080/hook").ok).toBe(false);
+    expect(validateWebhookUrl("http://localhost:8080/hook").ok).toBe(false);
+    expect(validateWebhookUrl("http://[::1]:8080/hook").ok).toBe(false);
     expect(validateWebhookUrl("file:///etc/passwd").ok).toBe(false);
     expect(validateWebhookUrl("http://user:pass@192.168.9.165:9999/hook").ok).toBe(false);
     expect(validateWebhookUrl("http://192.168.9.200:8080/webhook").ok).toBe(true);
@@ -49,7 +54,7 @@ describe("Phase 6 extensions: safe CSV/JSON export & signed webhook notification
   });
 
   test("exports readings CSV/JSON preserving null vs 0 and sanitized health report", async () => {
-    const runtime = createAppRuntime({ dbPath: ":memory:" });
+    const runtime = createAppRuntime({ dbPath: ":memory:", allowLoopbackWebhook: true });
     try {
       const cookie = await bootstrapAndLogin(runtime);
 
@@ -172,7 +177,7 @@ describe("Phase 6 extensions: safe CSV/JSON export & signed webhook notification
       },
     });
 
-    const runtime = createAppRuntime({ dbPath: ":memory:" });
+    const runtime = createAppRuntime({ dbPath: ":memory:", allowLoopbackWebhook: true });
     try {
       const cookie = await bootstrapAndLogin(runtime);
 
@@ -234,7 +239,7 @@ describe("Phase 6 extensions: safe CSV/JSON export & signed webhook notification
   });
 
   test("POST /api/v1/system/check enforces admin auth, cooldown, and returns global summary", async () => {
-    const runtime = createAppRuntime({ dbPath: ":memory:" });
+    const runtime = createAppRuntime({ dbPath: ":memory:", allowLoopbackWebhook: true });
     try {
       const unauth = await runtime.app.handle(
         new Request("http://localhost/api/v1/system/check", { method: "POST" }),
@@ -262,6 +267,140 @@ describe("Phase 6 extensions: safe CSV/JSON export & signed webhook notification
         }),
       );
       expect(second.status).toBe(429);
+    } finally {
+      runtime.close();
+    }
+  });
+
+  test("audit hardening: heartbeat timeout marks online offline (preserves standby), password change revokes session, and config blocks webhook secrets", async () => {
+    const runtime = createAppRuntime({ dbPath: ":memory:" });
+    try {
+      const adminCookie = await bootstrapAndLogin(runtime);
+
+      // 1. M-3 heartbeat timeout detection preserves standby disks and marks online devices offline
+      runtime.telemetryRepo.upsertHost({
+        host_id: "host-hb-1",
+        hostname: "hb-node",
+        os_name: "Debian",
+        os_version: "13",
+        kernel_version: "6.12",
+        architecture: "x86_64",
+        agent_version: "0.1.0",
+        boot_time: null,
+        uptime_seconds: 100,
+      });
+      runtime.telemetryRepo.upsertInventory(
+        "host-hb-1",
+        [
+          {
+            device_id: "cpu-online-0",
+            host_id: "host-hb-1",
+            device_type: "cpu",
+            vendor: "Intel",
+            model: "N5095A",
+            name: "CPU",
+            identity: {
+              stable: true,
+              pci_bus_id: null,
+              pci_vendor_id: null,
+              pci_device_id: null,
+              wwn: null,
+              serial: null,
+              nvme_nguid: null,
+              driver: null,
+              raw_path: null,
+              topology: null,
+            },
+            capabilities: [],
+            device_status: "online",
+          },
+          {
+            device_id: "disk-standby-0",
+            host_id: "host-hb-1",
+            device_type: "storage",
+            vendor: "HGST",
+            model: "HDD",
+            name: "HDD",
+            identity: {
+              stable: true,
+              pci_bus_id: null,
+              pci_vendor_id: null,
+              pci_device_id: null,
+              wwn: null,
+              serial: null,
+              nvme_nguid: null,
+              driver: null,
+              raw_path: null,
+              topology: null,
+            },
+            capabilities: [],
+            device_status: "standby",
+          },
+        ],
+        [],
+      );
+      const futureMs = Date.now() + 120_000;
+      const stale = runtime.telemetryRepo.detectStaleHostsAndMarkOffline(60, futureMs);
+      expect(stale.length).toBe(1);
+      expect(stale[0]?.deviceIds).toEqual(["cpu-online-0"]);
+      const devs = runtime.telemetryRepo.listDevices();
+      expect(devs.find((d) => d.deviceId === "cpu-online-0")?.deviceStatus).toBe("offline");
+      expect(devs.find((d) => d.deviceId === "disk-standby-0")?.deviceStatus).toBe("standby");
+
+      // 2. L-API-1: PUT /config rejects direct modification of notification_webhook_* keys
+      const badCfg = await runtime.app.handle(
+        new Request("http://localhost/api/v1/config", {
+          method: "PUT",
+          headers: { cookie: adminCookie, "content-type": "application/json" },
+          body: JSON.stringify({ notification_webhook_secret: "oops" }),
+        }),
+      );
+      expect(badCfg.status).toBe(400);
+
+      // 3. L-API-2: Changing a user's password immediately revokes their active session
+      const createRes = await runtime.app.handle(
+        new Request("http://localhost/api/v1/users", {
+          method: "POST",
+          headers: { cookie: adminCookie, "content-type": "application/json" },
+          body: JSON.stringify({
+            username: "viewer2",
+            password: "ViewerPassword!2026",
+            role: "viewer",
+          }),
+        }),
+      );
+      const createdUser = (await createRes.json()).data.user;
+      const vLogin = await runtime.app.handle(
+        new Request("http://localhost/api/v1/auth/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ username: "viewer2", password: "ViewerPassword!2026" }),
+        }),
+      );
+      const viewerCookie = vLogin.headers.get("set-cookie")!.split(";")[0]!;
+
+      // L-API-3: viewer cannot acknowledge alerts (403)
+      const ackForbidden = await runtime.app.handle(
+        new Request("http://localhost/api/v1/alerts/alt-1/ack", {
+          method: "POST",
+          headers: { cookie: viewerCookie },
+        }),
+      );
+      expect(ackForbidden.status).toBe(403);
+
+      // Admin changes viewer2 password -> viewerCookie must become unauthorized (401)
+      const patchRes = await runtime.app.handle(
+        new Request(`http://localhost/api/v1/users/${createdUser.user_id}`, {
+          method: "PATCH",
+          headers: { cookie: adminCookie, "content-type": "application/json" },
+          body: JSON.stringify({ password: "NewViewerPassword!2026" }),
+        }),
+      );
+      expect(patchRes.status).toBe(200);
+      const meAfter = await runtime.app.handle(
+        new Request("http://localhost/api/v1/auth/me", { headers: { cookie: viewerCookie } }),
+      );
+      expect(meAfter.status).toBe(401);
     } finally {
       runtime.close();
     }

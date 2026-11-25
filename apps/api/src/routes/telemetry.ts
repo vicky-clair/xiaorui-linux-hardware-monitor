@@ -187,6 +187,14 @@ export function createTelemetryRoutes(deps: {
         return errorResponse("VALIDATION_ERROR", "Request body must be a JSON object");
       }
       const updates = body as Record<string, unknown>;
+      // 禁止经通用配置接口覆写通知敏感键，统一由 /api/v1/notifications 管理
+      if (Object.keys(updates).some((k) => k.startsWith("notification_webhook_"))) {
+        set.status = 400;
+        return errorResponse(
+          "VALIDATION_ERROR",
+          "Use PUT /api/v1/notifications to manage webhook notification settings",
+        );
+      }
       authRepo.upsertSettings(updates, session.username);
       authRepo.writeAuditLog({
         actorUserId: session.user_id,

@@ -56,9 +56,16 @@ function buildElysiaApp(deps: {
         return errorResponse("NOT_FOUND", "Endpoint not found");
       }
       set.status = 500;
-      const message =
-        error instanceof Error ? error.message : "Unexpected internal error";
-      return errorResponse("INTERNAL_ERROR", message);
+      console.error(
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          component: "lhm-api-http",
+          level: "ERROR",
+          code,
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      return errorResponse("INTERNAL_ERROR", "Internal server error");
     })
     .use(healthRoute)
     .use(createAuthRoutes(deps.authService, deps.authRepo))
@@ -75,7 +82,9 @@ export function createAppRuntime(overrides?: Partial<ApiConfig>): AppRuntime {
   const alertRepo = new AlertRepository(dbHandle);
   const authRepo = new AuthRepository(dbHandle);
   const authService = new AuthService(authRepo, config);
-  const notifier = new AlertNotifier(authRepo);
+  const notifier = new AlertNotifier(authRepo, {
+    allowLoopback: Boolean(config.allowLoopbackWebhook),
+  });
   const hub = new RealtimeHub();
   const ipcProcessor = new IpcProcessor(telemetryRepo, hub);
   const healthService = new HealthAnalysisService(

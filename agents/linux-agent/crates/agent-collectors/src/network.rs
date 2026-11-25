@@ -100,7 +100,8 @@ impl Collector for NetworkCollector {
                     let (device_id, stable) = if let Some(ref bdf) = pci_bus_id {
                         (build_stable_id(&["net", "pci", bdf]), true)
                     } else {
-                        (build_stable_id(&["net", "iface", &iface]), true)
+                        // 无 PCI BDF 时回退到接口名，按稳定身份规范标为 stable = false
+                        (build_stable_id(&["net", "iface", &iface]), false)
                     };
 
                     let operstate = ctx

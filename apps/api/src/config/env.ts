@@ -23,6 +23,7 @@ export interface ApiConfig {
   retentionSmartDays: number;
   healthEngineUrl: string;
   healthEngineTimeoutMs: number;
+  allowLoopbackWebhook?: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -52,5 +53,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     retentionSmartDays: Number(env.LHM_RETENTION_SMART_DAYS ?? "365"),
     healthEngineUrl: env.LHM_HEALTH_ENGINE_URL ?? "http://127.0.0.1:8090",
     healthEngineTimeoutMs: Number(env.LHM_HEALTH_ENGINE_TIMEOUT_MS ?? "5000"),
+    allowLoopbackWebhook: false,
   };
 }

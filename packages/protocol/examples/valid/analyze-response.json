@@ -8,18 +8,28 @@
       "host_id": "debian-host-01",
       "device_id": "hwmon-coretemp-coretemp-0",
       "severity": "warning",
-      "score": 78.0,
+      "score": 65.0,
       "engine_version": "0.1.0",
       "rule_version": "rules-v1",
       "threshold_source": "user_device_override",
       "trend": "rising",
       "anomalies": [],
-      "correlations": [],
+      "correlations": [
+        {
+          "code": "SUSTAINED_THERMAL_RISE",
+          "summary": "Temperature is elevated and continuing to rise"
+        }
+      ],
       "factors": [
         {
           "metric": "temperature",
-          "delta": -22.0,
-          "reason": "Rule cpu-temp-warn exceeded (86.0 >= 80.0 celsius)"
+          "delta": -20.0,
+          "reason": "Rule cpu-temp-warn exceeded (86.0 vs 80.0; user device override)"
+        },
+        {
+          "metric": "correlation",
+          "delta": -15.0,
+          "reason": "SUSTAINED_THERMAL_RISE: Temperature is elevated and continuing to rise"
         }
       ],
       "analyzed_at": "2026-11-20T10:05:00Z"
@@ -33,7 +43,7 @@
       "rule_id": "cpu-temp-warn",
       "transition": "trigger",
       "severity": "warning",
-      "summary": "temperature reached 86.0 celsius (threshold >= 80.0)",
+      "summary": "temperature sustained at 86.0 for >= 60s",
       "metric": "temperature",
       "observed_value": 86.0,
       "threshold": 80.0,

@@ -3,6 +3,7 @@
 module Main (main) where
 
 import Control.Monad (unless)
+import Data.Aeson (eitherDecodeFileStrict)
 import Health.Anomaly (detectAnomalies)
 import Health.Correlation (detectCorrelations)
 import Health.Engine (analyze, evaluateReadingQuality)
@@ -128,5 +129,47 @@ main = do
       assertBool "stale CPU cannot be Normal" (resSeverity cpuRes == SeverityUnknown && resScore cpuRes == Nothing)
       assertBool "standby disk is Normal without penalty" (resSeverity standbyRes == SeverityNormal && resScore standbyRes == Nothing)
     _ -> assertBool "expected 2 device results" False
+
+  -- 6. M-8 regression: global rule threshold source matches the rule value (not mislabeled hardware_limit)
+  let thGlobalWithHw = resolveThreshold DevCpu "cpu-system-0" "temperature" (Just rule60) [hwLim]
+  assertBool
+    "global rule does not mislabel source as hardware_limit"
+    (resolvedSource thGlobalWithHw == ThGenericDefault && resolvedValue thGlobalWithHw == Just 80)
+
+  -- 7. M-9 regression: OpLt / OpLte uses minimum across multi-sensor readings so stopped 0 RPM fan triggers
+  let fanRule =
+        AlertRuleSpec "fan-stopped" "fan_speed" DevMotherboard Nothing OpLt 500 UnitRpm 0 SeverityCritical True
+      fanReq =
+        AnalyzeRequest
+          { reqSchemaVersion = "1.1"
+          , reqHostId = "debian-host-01"
+          , reqEvaluatedAt = "2026-11-20T10:05:00Z"
+          , reqRuleVersion = "rules-v1"
+          , reqDevices = [AnalyzeDeviceRef "mb-0" DevMotherboard DeviceOnline]
+          , reqReadings =
+              [ (mkReading "fan_speed" 1800 QualityValid) {readingDeviceId = "mb-0", readingSensorId = "mb-0-fan1"}
+              , (mkReading "fan_speed" 0 QualityValid) {readingDeviceId = "mb-0", readingSensorId = "mb-0-fan2"}
+              ]
+          , reqHistoryPoints = []
+          , reqRules = [fanRule]
+          , reqHardwareLimits = []
+          , reqPrevAlertStates = []
+          }
+      fanResp = analyze fanReq
+  assertBool
+    "OpLt rule catches 0 RPM stopped fan despite another fan at 1800 RPM"
+    (any (\tr -> transRuleId tr == "fan-stopped" && transObservedValue tr == Just 0.0 && transKind tr == TransitionTrigger) (respAlertTransitions fanResp))
+
+  -- 8. H-1 regression: golden analyze-request.json fed into real Health.Engine.analyze MUST match analyze-response.json
+  eReq <- eitherDecodeFileStrict "../../packages/protocol/examples/valid/analyze-request.json" :: IO (Either String AnalyzeRequest)
+  eExp <- eitherDecodeFileStrict "../../packages/protocol/examples/valid/analyze-response.json" :: IO (Either String AnalyzeResponse)
+  case (eReq, eExp) of
+    (Right gReq, Right gExp) -> do
+      let gActual = analyze gReq
+      assertBool
+        ("golden analyze-response.json must match actual Health.Engine.analyze output; got: " <> show gActual)
+        (gActual == gExp)
+    (Left err, _) -> assertBool ("failed to decode golden analyze-request.json: " <> err) False
+    (_, Left err) -> assertBool ("failed to decode golden analyze-response.json: " <> err) False
 
   putStrLn "All Haskell health-engine Phase 4 tests passed."

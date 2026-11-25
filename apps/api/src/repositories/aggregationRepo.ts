@@ -6,6 +6,9 @@ export interface RetentionPolicy {
   agg1mDays: number;
   agg1hDays: number;
   smartDays: number;
+  analysisDays?: number;
+  eventsDays?: number;
+  auditDays?: number;
   batchSize?: number;
 }
 
@@ -14,6 +17,9 @@ export interface PruneResult {
   agg1mDeleted: number;
   agg1hDeleted: number;
   smartDeleted: number;
+  analysisDeleted: number;
+  eventsDeleted: number;
+  auditDeleted: number;
 }
 
 /**
@@ -148,6 +154,39 @@ export class AggregationRepository {
       smartCutoff,
     );
 
-    return { rawDeleted, agg1mDeleted, agg1hDeleted, smartDeleted };
+    const analysisCutoff = cutoff(policy.analysisDays ?? 90);
+    const eventsCutoff = cutoff(policy.eventsDays ?? 90);
+    const auditCutoff = cutoff(policy.auditDays ?? 365);
+
+    const analysisDeleted = deleteChunk(
+      `DELETE FROM analysis_results WHERE id IN (
+        SELECT id FROM analysis_results WHERE analyzed_at < ? LIMIT ?
+      )`,
+      analysisCutoff,
+    );
+
+    const eventsDeleted = deleteChunk(
+      `DELETE FROM health_events WHERE id IN (
+        SELECT id FROM health_events WHERE occurred_at < ? LIMIT ?
+      )`,
+      eventsCutoff,
+    );
+
+    const auditDeleted = deleteChunk(
+      `DELETE FROM audit_logs WHERE id IN (
+        SELECT id FROM audit_logs WHERE occurred_at < ? LIMIT ?
+      )`,
+      auditCutoff,
+    );
+
+    return {
+      rawDeleted,
+      agg1mDeleted,
+      agg1hDeleted,
+      smartDeleted,
+      analysisDeleted,
+      eventsDeleted,
+      auditDeleted,
+    };
   }
 }
